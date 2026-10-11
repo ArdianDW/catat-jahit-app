@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Home, Scissors, Users, Tag } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -44,10 +45,10 @@ export default function DashboardLayout({
   };
 
   const navItems = [
-    { label: "Beranda", href: "/beranda", icon: "🏠" },
-    { label: "Order", href: "/order", icon: "📋" },
-    { label: "Pelanggan", href: "/pelanggan", icon: "👤" },
-    { label: "Layanan", href: "/layanan", icon: "✂️" },
+    { label: "Beranda", href: "/beranda", icon: Home },
+    { label: "Order", href: "/order", icon: Scissors },
+    { label: "Pelanggan", href: "/pelanggan", icon: Users },
+    { label: "Layanan", href: "/layanan", icon: Tag },
   ];
 
   return (
@@ -199,20 +200,27 @@ export default function DashboardLayout({
         </div>
       )}
 
-      <nav className="shrink-0 bg-white border-t border-gray-200 grid grid-cols-4 z-10 min-h-[64px]">
+      <nav className="shrink-0 bg-white border-t border-gray-200 grid grid-cols-4 z-10 min-h-[64px] shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
+          const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center min-h-[48px] py-1 transition-colors ${isActive
+              className={`flex flex-col items-center justify-center min-h-[56px] py-1.5 transition-all select-none active:scale-95 ${isActive
                 ? "text-[#6B8F71] font-semibold"
-                : "text-gray-500 hover:text-gray-700"
+                : "text-gray-400 hover:text-gray-600"
                 }`}
             >
-              <span className="text-xl leading-none mb-1">{item.icon}</span>
-              <span className="text-xs">{item.label}</span>
+              <Icon
+                className={`w-5 h-5 mb-1 transition-transform duration-200 ${isActive ? "scale-110" : ""
+                  }`}
+                strokeWidth={isActive ? 2.3 : 1.8}
+              />
+              <span className={`text-[11px] leading-tight ${isActive ? "font-semibold" : "font-medium"}`}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
