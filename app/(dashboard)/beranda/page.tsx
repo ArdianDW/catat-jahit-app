@@ -18,7 +18,6 @@ interface DeadlineOrder {
   statusTextColor: string;
 }
 
-// Data dummy 3 order mendekati deadline
 const initialDeadlineOrders: DeadlineOrder[] = [
   {
     id: "1",
@@ -58,7 +57,7 @@ const initialDeadlineOrders: DeadlineOrder[] = [
   },
 ];
 
-const emptySubscribe = () => () => {};
+const emptySubscribe = () => () => { };
 
 function getClientDate() {
   return new Date().toLocaleDateString("id-ID", {
@@ -78,7 +77,6 @@ export default function BerandaPage() {
 
   const [orders, setOrders] = useState<DeadlineOrder[]>(initialDeadlineOrders);
 
-  // Aksi cepat untuk memajukan status order
   const handleAdvanceStatus = (orderId: string) => {
     setOrders((prev) =>
       prev.map((order) => {
@@ -96,13 +94,11 @@ export default function BerandaPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* 1. Sapaan & Tanggal (Task 4 & Task 5) */}
       <section className="flex flex-col gap-1">
         <h2 className="text-2xl font-bold text-gray-800 tracking-tight">
           Halo, Bu Rusliyati!
         </h2>
         <div className="text-sm text-gray-500 font-medium min-h-[20px] flex items-center gap-1.5">
-          {/* Icon Kalender */}
           <svg
             className="w-4 h-4 text-gray-500 shrink-0"
             fill="none"
@@ -121,7 +117,6 @@ export default function BerandaPage() {
         </div>
       </section>
 
-      {/* 2. Tombol Aksi (Task 6) */}
       <section className="flex flex-col gap-3">
         <Link
           href="/order/baru"
@@ -139,7 +134,6 @@ export default function BerandaPage() {
           <span>Tambah Order</span>
         </Link>
 
-        {/* Tombol Tambah Pelanggan dengan warna #465F86 */}
         <Link
           href="/pelanggan/baru"
           className="flex items-center justify-center gap-2 min-h-[48px] px-4 py-3 rounded-xl bg-[#465F86] hover:bg-[#384c6c] text-white font-medium text-sm shadow-sm transition-all active:scale-[0.98] cursor-pointer w-full"
@@ -161,9 +155,7 @@ export default function BerandaPage() {
         </Link>
       </section>
 
-      {/* 3. Tiga Box Statistik — angka di atas, label tengah, sub-label bawah */}
       <section className="grid grid-cols-3 gap-2.5">
-        {/* Box 1: Order Aktif */}
         <div className="flex flex-col items-center justify-center text-center p-3 rounded-2xl bg-white border border-gray-100 shadow-xs min-h-[94px]">
           <span className="text-2xl font-bold leading-tight text-[#465F86]">
             12
@@ -176,7 +168,6 @@ export default function BerandaPage() {
           </span>
         </div>
 
-        {/* Box 2: Mendekati Deadline */}
         <div className="flex flex-col items-center justify-center text-center p-3 rounded-2xl bg-[#FFDAD6] border border-[#FFDAD6] shadow-xs min-h-[94px]">
           <span className="text-2xl font-bold leading-tight text-[#93000A]">
             3
@@ -189,7 +180,6 @@ export default function BerandaPage() {
           </span>
         </div>
 
-        {/* Box 3: Siap Diambil */}
         <div className="flex flex-col items-center justify-center text-center p-3 rounded-2xl bg-white border border-gray-100 shadow-xs min-h-[94px]">
           <span className="text-2xl font-bold leading-tight text-[#6B8F71]">
             5
@@ -203,11 +193,9 @@ export default function BerandaPage() {
         </div>
       </section>
 
-      {/* 4. Seksi Order Mendekati Deadline (Task 8 & Task 9) */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* Icon Jam Alarm Merah */}
             <svg
               className="w-5 h-5 text-red-600 shrink-0"
               fill="none"
@@ -233,7 +221,6 @@ export default function BerandaPage() {
           </span>
         </div>
 
-        {/* List 3 Order Mendekati Deadline */}
         <div className="flex flex-col gap-3">
           {orders.map((order) => {
             return (
@@ -241,9 +228,7 @@ export default function BerandaPage() {
                 key={order.id}
                 className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex flex-col gap-3.5 transition-all hover:border-[#6B8F71]/60"
               >
-                {/* Baris Atas: Avatar + Informasi + Status */}
                 <div className="flex items-start gap-3">
-                  {/* Avatar WhatsApp-style: Lingkaran + Inisial */}
                   <div
                     style={{
                       backgroundColor: order.avatarBg,
@@ -254,17 +239,14 @@ export default function BerandaPage() {
                     {order.initials}
                   </div>
 
-                  {/* Detail Info Pelanggan, Barang & Deadline */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-bold text-gray-800 truncate">
                         {order.pelanggan}
                       </p>
 
-                      {/* Status Badge dengan Icon — warna icon terpisah dari warna teks */}
                       <div className="flex items-center gap-1 text-xs font-bold shrink-0">
                         {order.status === "Dikerjakan" && (
-                          /* Icon Centang 2 — warna tetap #6B8F71 */
                           <svg
                             className="w-4 h-4 shrink-0"
                             style={{ color: "#6B8F71" }}
@@ -280,7 +262,6 @@ export default function BerandaPage() {
                           </svg>
                         )}
                         {order.status === "Antri" && (
-                          /* Icon Jam — warna tetap #727971 */
                           <svg
                             className="w-3.5 h-3.5 shrink-0"
                             style={{ color: "#727971" }}
@@ -296,7 +277,6 @@ export default function BerandaPage() {
                           </svg>
                         )}
                         {order.status === "Selesai" && (
-                          /* Icon Centang Selesai */
                           <svg
                             className="w-3.5 h-3.5 shrink-0"
                             style={{ color: "#6B8F71" }}
@@ -314,26 +294,22 @@ export default function BerandaPage() {
                       </div>
                     </div>
 
-                    {/* Nama Barang - Sisa Deadline */}
                     <p className="text-xs text-gray-600 mt-1 font-medium truncate">
                       {order.namaBarang} - {order.sisaDeadline}
                     </p>
 
-                    {/* Tanggal Deadline */}
                     <p className="text-[11px] text-gray-400 mt-0.5">
                       {order.deadlineDate}
                     </p>
                   </div>
                 </div>
 
-                {/* Tombol Cepat Ubah Status Selebar Box Order */}
                 {order.status === "Dikerjakan" && (
                   <button
                     type="button"
                     onClick={() => handleAdvanceStatus(order.id)}
                     className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-medium text-xs shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    {/* Icon Centang di Dalam Lingkaran */}
                     <svg
                       className="w-4 h-4 shrink-0"
                       fill="none"
@@ -356,7 +332,6 @@ export default function BerandaPage() {
                     onClick={() => handleAdvanceStatus(order.id)}
                     className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-[#465F86] hover:bg-[#384c6c] text-white font-medium text-xs shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    {/* Icon Play di Dalam Lingkaran */}
                     <svg
                       className="w-4 h-4 shrink-0"
                       fill="none"

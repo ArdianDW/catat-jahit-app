@@ -26,18 +26,18 @@ export default function DashboardLayout({
   const formTitle = isTambahOrder
     ? "Tambah Order"
     : isTambahPelanggan
-    ? "Tambah Pelanggan"
-    : isTambahLayanan
-    ? "Tambah Layanan"
-    : "";
+      ? "Tambah Pelanggan"
+      : isTambahLayanan
+        ? "Tambah Layanan"
+        : "";
 
   const singlePageFab = isOrder
     ? { label: "Tambah Order", href: "/order/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }
     : isPelanggan
-    ? { label: "Tambah Pelanggan", href: "/pelanggan/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }
-    : isLayanan
-    ? { label: "Tambah Layanan", href: "/layanan/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }
-    : null;
+      ? { label: "Tambah Pelanggan", href: "/pelanggan/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }
+      : isLayanan
+        ? { label: "Tambah Layanan", href: "/layanan/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }
+        : null;
 
   const handleHeaderBack = () => {
     router.back();
@@ -52,7 +52,6 @@ export default function DashboardLayout({
 
   return (
     <div className="flex flex-col h-screen w-full max-w-md mx-auto bg-[#FAF6EE] border-x border-gray-200 relative overflow-hidden">
-      {/* Top Header Bar */}
       <header className="bg-[#6B8F71] text-white px-4 py-3.5 shadow-sm shrink-0 flex items-center justify-between relative z-10 min-h-[56px]">
         {isFormPage ? (
           <>
@@ -80,7 +79,6 @@ export default function DashboardLayout({
           </>
         ) : (
           <div className="flex items-center gap-2">
-            {/* Icon Gunting */}
             <svg
               className="w-5 h-5 text-white shrink-0"
               fill="none"
@@ -103,39 +101,34 @@ export default function DashboardLayout({
         )}
       </header>
 
-      {/* Main Content (Scrollable) */}
       <main className="flex-1 overflow-y-auto p-4 pb-24">
         {children}
       </main>
 
-      {/* Floating Action Button (FAB) khusus di Beranda — Dioptimalkan untuk HP (GPU-accelerated, tanpa backdrop-blur) */}
       {isBeranda && (
         <>
-          {/* Backdrop ringan tanpa backdrop-blur agar lancar dan tidak lag di HP */}
           {fabOpen && (
             <div
-              className="absolute inset-0 bg-black/20 z-20 transition-opacity duration-200"
+              className="absolute inset-0 bg-black/25 z-20 transition-opacity backdrop-blur-[1px]"
               onClick={() => setFabOpen(false)}
             />
           )}
 
-          <div className="absolute bottom-20 right-4 flex flex-col items-end gap-2.5 z-30 pointer-events-none">
-            {/* Opsi 1: Tambah Order */}
+          <div className="absolute bottom-20 right-4 flex flex-col items-end gap-2.5 z-30">
             <div
-              className={`flex items-center gap-2 transform-gpu will-change-[transform,opacity] transition-[transform,opacity] duration-200 ease-out origin-bottom-right ${
-                fabOpen
-                  ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                  : "opacity-0 translate-y-2.5 scale-90 pointer-events-none"
-              }`}
+              className={`flex items-center gap-2 transition-all duration-300 ease-out origin-bottom-right ${fabOpen
+                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                : "opacity-0 translate-y-4 scale-75 pointer-events-none"
+                }`}
             >
-              <span className="bg-white text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-md shadow-sm border border-gray-100">
+              <span className="bg-white/95 text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-md shadow-md border border-gray-100">
                 Order
               </span>
               <Link
                 href="/order/baru"
                 onClick={() => setFabOpen(false)}
                 aria-label="Tambah Order"
-                className="w-12 h-12 rounded-full bg-[#6B8F71] hover:bg-[#5a7b5f] text-white shadow-md flex items-center justify-center transition-transform duration-150 active:scale-95 transform-gpu"
+                className="w-12 h-12 rounded-full bg-[#6B8F71] hover:bg-[#5a7b5f] text-white shadow-lg flex items-center justify-center transition-all active:scale-95"
               >
                 <svg
                   className="w-5 h-5"
@@ -149,22 +142,20 @@ export default function DashboardLayout({
               </Link>
             </div>
 
-            {/* Opsi 2: Tambah Pelanggan */}
             <div
-              className={`flex items-center gap-2 transform-gpu will-change-[transform,opacity] transition-[transform,opacity] duration-200 ease-out origin-bottom-right ${
-                fabOpen
-                  ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                  : "opacity-0 translate-y-2.5 scale-90 pointer-events-none"
-              }`}
+              className={`flex items-center gap-2 transition-all duration-300 delay-75 ease-out origin-bottom-right ${fabOpen
+                ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                : "opacity-0 translate-y-4 scale-75 pointer-events-none"
+                }`}
             >
-              <span className="bg-white text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-md shadow-sm border border-gray-100">
+              <span className="bg-white/95 text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-md shadow-md border border-gray-100">
                 Pelanggan
               </span>
               <Link
                 href="/pelanggan/baru"
                 onClick={() => setFabOpen(false)}
                 aria-label="Tambah Pelanggan"
-                className="w-12 h-12 rounded-full bg-[#6B8F71] hover:bg-[#5a7b5f] text-white shadow-md flex items-center justify-center transition-transform duration-150 active:scale-95 transform-gpu"
+                className="w-12 h-12 rounded-full bg-[#6B8F71] hover:bg-[#5a7b5f] text-white shadow-lg flex items-center justify-center transition-all active:scale-95"
               >
                 <svg
                   className="w-5 h-5"
@@ -182,14 +173,12 @@ export default function DashboardLayout({
               </Link>
             </div>
 
-            {/* Tombol Utama (+) dengan Animasi Rotasi Ringan GPU */}
             <button
               type="button"
               onClick={() => setFabOpen((prev) => !prev)}
               aria-label="Tambah baru"
-              className={`pointer-events-auto w-14 h-14 bg-[#6B8F71] text-white rounded-full shadow-lg flex items-center justify-center text-3xl font-light hover:bg-[#5a7b5f] active:scale-95 transform-gpu will-change-transform transition-transform duration-200 ease-out cursor-pointer ${
-                fabOpen ? "rotate-45 bg-[#5a7b5f]" : "rotate-0"
-              }`}
+              className={`w-14 h-14 bg-[#6B8F71] text-white rounded-full shadow-xl flex items-center justify-center text-3xl font-light hover:bg-[#5a7b5f] active:scale-95 transition-transform duration-300 cursor-pointer ${fabOpen ? "rotate-45 bg-[#5a7b5f]" : "rotate-0"
+                }`}
             >
               +
             </button>
@@ -197,7 +186,6 @@ export default function DashboardLayout({
         </>
       )}
 
-      {/* Floating Action Button untuk Order, Pelanggan, dan Layanan */}
       {singlePageFab && (
         <div className="absolute bottom-20 right-4 z-30">
           <Link
@@ -211,7 +199,6 @@ export default function DashboardLayout({
         </div>
       )}
 
-      {/* Bottom Navigation */}
       <nav className="shrink-0 bg-white border-t border-gray-200 grid grid-cols-4 z-10 min-h-[64px]">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
@@ -219,11 +206,10 @@ export default function DashboardLayout({
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center min-h-[48px] py-1 transition-colors ${
-                isActive
-                  ? "text-[#6B8F71] font-semibold"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              className={`flex flex-col items-center justify-center min-h-[48px] py-1 transition-colors ${isActive
+                ? "text-[#6B8F71] font-semibold"
+                : "text-gray-500 hover:text-gray-700"
+                }`}
             >
               <span className="text-xl leading-none mb-1">{item.icon}</span>
               <span className="text-xs">{item.label}</span>

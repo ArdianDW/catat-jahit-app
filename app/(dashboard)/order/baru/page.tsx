@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-// --- Step definitions ---
 const STEPS = [
   { id: 1, label: "Pelanggan", title: "Pilih Pelanggan" },
   { id: 2, label: "Layanan", title: "Pilih Layanan" },
@@ -28,13 +27,11 @@ export default function TambahOrderPage() {
   };
 
   const handleSubmit = () => {
-    // TODO: submit logic
     router.push("/order");
   };
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Step Indicator — Teks langkah + Garis */}
       <div className="mb-6">
         <p className="text-xs text-gray-500 font-medium mb-2">
           Langkah {currentStep} dari {STEPS.length}
@@ -52,10 +49,8 @@ export default function TambahOrderPage() {
         </div>
       </div>
 
-      {/* Step Content (Kosong — akan diisi nanti) */}
       <div className="flex-1 mb-5" />
 
-      {/* Navigasi Antar Step */}
       <div className="mt-auto">
         {hasPrevStep ? (
           <div className="flex gap-3">
@@ -72,7 +67,6 @@ export default function TambahOrderPage() {
               className="flex-1 min-h-[48px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-semibold text-sm shadow-sm active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <span>Lanjut ke langkah {currentStep + 1}</span>
-              {/* Icon Panah Kanan */}
               <svg
                 className="w-4 h-4 shrink-0"
                 fill="none"
@@ -94,7 +88,6 @@ export default function TambahOrderPage() {
           >
             {isLast ? (
               <>
-                {/* Icon Centang */}
                 <svg
                   className="w-4 h-4 shrink-0"
                   fill="none"
@@ -111,7 +104,6 @@ export default function TambahOrderPage() {
             ) : (
               <>
                 <span>Lanjut ke langkah {currentStep + 1}</span>
-                {/* Icon Panah Kanan */}
                 <svg
                   className="w-4 h-4 shrink-0"
                   fill="none"
