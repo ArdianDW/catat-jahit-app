@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,9 +13,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#6B8F71",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "CatatJahit",
   description: "Aplikasi pencatatan pesanan jahit dan permak",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CatatJahit",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#FAF6EE]">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#FAF6EE]">
+        {children}
+        <PwaInstallPrompt />
+      </body>
     </html>
   );
 }
