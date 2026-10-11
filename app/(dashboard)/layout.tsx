@@ -22,7 +22,8 @@ export default function DashboardLayout({
   const isTambahOrder = pathname.startsWith("/order/baru");
   const isTambahPelanggan = pathname.startsWith("/pelanggan/baru");
   const isTambahLayanan = pathname.startsWith("/layanan/baru");
-  const isFormPage = isTambahOrder || isTambahPelanggan || isTambahLayanan;
+  const isDetailOrder = pathname.startsWith("/order/") && !isTambahOrder;
+  const isFormPage = isTambahOrder || isTambahPelanggan || isTambahLayanan || isDetailOrder;
 
   const formTitle = isTambahOrder
     ? "Tambah Order"
@@ -30,7 +31,9 @@ export default function DashboardLayout({
       ? "Tambah Pelanggan"
       : isTambahLayanan
         ? "Tambah Layanan"
-        : "";
+        : isDetailOrder
+          ? "Detail Order"
+          : "";
 
   const singlePageFab = isOrder
     ? { label: "Tambah Order", href: "/order/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }

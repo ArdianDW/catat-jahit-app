@@ -6,24 +6,32 @@ export interface RingkasanBeranda {
   siapDiambil: number;
 }
 
-export interface DeadlineOrderItem {
+export type StatusOrder = "Antri" | "Dikerjakan" | "Selesai" | "Diambil";
+
+export interface OrderItem {
   id: string;
   nomor_order: string;
   jenis_order: "Jahit Baru" | "Permak";
+  tanggal_masuk: string;
   tanggal_deadline: string;
-  status: "Antri" | "Dikerjakan" | "Selesai" | "Diambil";
   total_harga: number;
+  status: StatusOrder;
+  status_pembayaran: "Belum Lunas" | "Lunas";
+  catatan_model: string | null;
   pelanggan: {
     id: string;
     nama_pelanggan: string;
-    no_hp?: string;
+    no_hp: string;
   } | null;
   item_order: {
     id: string;
     nama_item: string;
     jumlah: number;
+    harga_item: number;
   }[];
 }
+
+export type DeadlineOrderItem = OrderItem;
 
 export async function getRingkasanBeranda(batasHari = 3): Promise<RingkasanBeranda> {
   try {
@@ -92,4 +100,255 @@ export async function ubahStatusOrder(orderId: string) {
   });
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function getSemuaOrder(statusFilter?: StatusOrder): Promise<OrderItem[]> {
+  try {
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("orders")
+      .select(
+        `
+        id,
+        nomor_order,
+        jenis_order,
+        tanggal_masuk,
+        tanggal_deadline,
+        total_harga,
+        status,
+        status_pembayaran,
+        catatan_model,
+        pelanggan:pelanggan_id ( id, nama_pelanggan, no_hp ),
+        item_order ( id, nama_item, jumlah, harga_item )
+      `
+      )
+      .order("tanggal_deadline", { ascending: true });
+
+    if (statusFilter) {
+      query = query.eq("status", statusFilter);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Error getSemuaOrder:", error);
+      return [];
+    }
+    return (data as unknown as OrderItem[]) ?? [];
+  } catch (err) {
+    console.error("Exception in getSemuaOrder:", err);
+    return [];
+  }
+}
+
+export interface OrderDetailItem {
+  id: string;
+  order_id: string;
+  layanan_id: string | null;
+  nama_item: string;
+  jumlah: number;
+  harga_item: number;
+  ukuran_sumber: "pelanggan" | "lain" | "tanpa";
+  ukuran_untuk: string | null;
+  lingkar_dada: number | null;
+  lingkar_pinggang: number | null;
+  lingkar_pinggul: number | null;
+  panjang_bahu: number | null;
+  panjang_lengan: number | null;
+  panjang_baju: number | null;
+  panjang_celana: number | null;
+  catatan_ukuran: string | null;
+  layanan?: {
+    id: string;
+    nama_layanan: string;
+  } | null;
+}
+
+export interface RiwayatStatusItem {
+  id: string;
+  order_id: string;
+  status: StatusOrder;
+  tanggal: string;
+}
+
+export interface OrderDetail {
+  id: string;
+  nomor_order: string;
+  jenis_order: "Jahit Baru" | "Permak";
+  tanggal_masuk: string;
+  tanggal_deadline: string;
+  total_harga: number;
+  status: StatusOrder;
+  status_pembayaran: "Belum Lunas" | "Lunas";
+  catatan_model: string | null;
+  created_at: string;
+  updated_at: string;
+  pelanggan: {
+    id: string;
+    nama_pelanggan: string;
+    no_hp: string;
+    alamat_singkat: string | null;
+    lingkar_dada: number | null;
+    lingkar_pinggang: number | null;
+    lingkar_pinggul: number | null;
+    panjang_bahu: number | null;
+    panjang_lengan: number | null;
+    panjang_baju: number | null;
+    panjang_celana: number | null;
+    catatan_ukuran: string | null;
+    tanggal_terakhir_diukur: string | null;
+  } | null;
+  item_order: OrderDetailItem[];
+  riwayat_status: RiwayatStatusItem[];
+}
+
+export async function getDetailOrder(orderId: string): Promise<OrderDetail | null> {
+  try {
+    const supabase = await createClient();
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select(`
+        id,
+        nomor_order,
+        jenis_order,
+        tanggal_masuk,
+        tanggal_deadline,
+        total_harga,
+        status,
+        status_pembayaran,
+        catatan_model,
+        created_at,
+        updated_at,
+        pelanggan:pelanggan_id (
+          id, nama_pelanggan, no_hp, alamat_singkat,
+          lingkar_dada, lingkar_pinggang, lingkar_pinggul,
+          panjang_bahu, panjang_lengan, panjang_baju, panjang_celana,
+          catatan_ukuran, tanggal_terakhir_diukur
+        ),
+        item_order (
+          id, order_id, layanan_id, nama_item, jumlah, harga_item,
+          ukuran_sumber, ukuran_untuk,
+          lingkar_dada, lingkar_pinggang, lingkar_pinggul,
+          panjang_bahu, panjang_lengan, panjang_baju, panjang_celana,
+          catatan_ukuran,
+          layanan:layanan_id ( id, nama_layanan )
+        ),
+        riwayat_status (
+          id, order_id, status, tanggal
+        )
+      `)
+      .eq("id", orderId)
+      .single();
+
+    if (orderError || !order) {
+      console.error("Error getDetailOrder:", orderError);
+      return null;
+    }
+
+    if (order.riwayat_status && Array.isArray(order.riwayat_status)) {
+      (order.riwayat_status as RiwayatStatusItem[]).sort(
+        (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+      );
+    }
+
+    return order as unknown as OrderDetail;
+  } catch (err) {
+    console.error("Exception in getDetailOrder:", err);
+    return null;
+  }
+}
+
+export interface PelangganOption {
+  id: string;
+  nama_pelanggan: string;
+  no_hp: string;
+  alamat_singkat: string | null;
+  has_ukuran: boolean;
+  lingkar_dada: number | null;
+  lingkar_pinggang: number | null;
+  lingkar_pinggul: number | null;
+  panjang_bahu: number | null;
+  panjang_lengan: number | null;
+  panjang_baju: number | null;
+  panjang_celana: number | null;
+  catatan_ukuran: string | null;
+}
+
+export async function getPelangganOptions(): Promise<PelangganOption[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("pelanggan")
+      .select(`
+        id,
+        nama_pelanggan,
+        no_hp,
+        alamat_singkat,
+        lingkar_dada,
+        lingkar_pinggang,
+        lingkar_pinggul,
+        panjang_bahu,
+        panjang_lengan,
+        panjang_baju,
+        panjang_celana,
+        catatan_ukuran
+      `)
+      .order("nama_pelanggan", { ascending: true });
+
+    if (error) {
+      console.error("Error getPelangganOptions:", error);
+      return [];
+    }
+
+    return (data || []).map((p) => {
+      const has_ukuran = Boolean(
+        p.lingkar_dada ||
+        p.lingkar_pinggang ||
+        p.lingkar_pinggul ||
+        p.panjang_bahu ||
+        p.panjang_lengan ||
+        p.panjang_baju ||
+        p.panjang_celana
+      );
+      return { ...p, has_ukuran };
+    });
+  } catch (err) {
+    console.error("Exception in getPelangganOptions:", err);
+    return [];
+  }
+}
+
+export interface LayananOption {
+  id: string;
+  nama_layanan: string;
+  harga_dasar: number;
+  deskripsi: string | null;
+  jenis: "Jahit" | "Permak";
+  aktif: boolean;
+}
+
+export async function getLayananOptions(jenis?: "Jahit" | "Permak"): Promise<LayananOption[]> {
+  try {
+    const supabase = await createClient();
+    let query = supabase
+      .from("layanan")
+      .select("id, nama_layanan, harga_dasar, deskripsi, jenis, aktif")
+      .eq("aktif", true)
+      .order("nama_layanan", { ascending: true });
+
+    if (jenis) {
+      query = query.eq("jenis", jenis);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Error getLayananOptions:", error);
+      return [];
+    }
+    return (data as unknown as LayananOption[]) ?? [];
+  } catch (err) {
+    console.error("Exception in getLayananOptions:", err);
+    return [];
+  }
 }

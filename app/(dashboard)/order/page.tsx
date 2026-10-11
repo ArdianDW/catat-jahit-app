@@ -1,7 +1,9 @@
-export default function OrderPage() {
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-gray-800">Order</h2>
-    </div>
-  );
+import { getSemuaOrder } from "@/lib/data";
+import OrderClient from "./OrderClient";
+
+export const dynamic = "force-dynamic";
+
+export default async function OrderPage() {
+  const orders = await getSemuaOrder();
+  return <OrderClient initialOrders={orders} />;
 }
