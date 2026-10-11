@@ -55,7 +55,7 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex flex-col h-screen w-full max-w-md mx-auto bg-[#FAF6EE] border-x border-gray-200 relative overflow-hidden">
+    <div className="flex flex-col h-dvh w-full max-w-md mx-auto bg-[#FAF6EE] border-x border-gray-200 relative overflow-hidden">
       <header className="bg-[#6B8F71] text-white px-4 py-3.5 shadow-sm shrink-0 flex items-center justify-between relative z-10 min-h-[56px]">
         {isFormPage ? (
           <>
