@@ -16,8 +16,26 @@ export async function advanceOrderStatus(orderId: string) {
       return { success: false, error: error.message };
     }
 
+    const { data: orderData } = await supabase
+      .from("orders")
+      .select("status, status_pembayaran")
+      .eq("id", orderId)
+      .single();
+
+    if (orderData?.status === "Diambil" && orderData.status_pembayaran !== "Lunas") {
+      const { error: payError } = await supabase
+        .from("orders")
+        .update({ status_pembayaran: "Lunas" })
+        .eq("id", orderId);
+
+      if (payError) {
+        console.error("Error updating status_pembayaran to Lunas:", payError);
+      }
+    }
+
     revalidatePath("/beranda");
     revalidatePath("/order");
+    revalidatePath(`/order/${orderId}`);
     return { success: true, data };
   } catch (err: unknown) {
     console.error("Exception in advanceOrderStatus:", err);

@@ -221,6 +221,7 @@ export default function BerandaClient({
         return {
           ...order,
           status: nextStatus as DeadlineOrderItem["status"],
+          status_pembayaran: nextStatus === "Diambil" ? "Lunas" : order.status_pembayaran,
         };
       })
     );

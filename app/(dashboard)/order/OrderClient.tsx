@@ -213,7 +213,17 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
     const next = nextStatus[currentStatus];
     if (!next) { setUpdatingId(null); return; }
 
-    setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: next } : o));
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              status: next,
+              status_pembayaran: next === "Diambil" ? "Lunas" : o.status_pembayaran,
+            }
+          : o
+      )
+    );
 
     const res = await advanceOrderStatus(orderId);
     setUpdatingId(null);

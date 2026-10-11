@@ -866,7 +866,7 @@ export default function TambahOrderClient({
                   </p>
                 </div>
                 {sisaHari !== null && (
-                  <div className="flex items-center gap-2 text-base font-bold text-[#00210C] mt-0.5">
+                  <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-[#00210C] bg-[#C5ECC9] px-3.5 py-2.5 rounded-xl mt-1">
                     <Hourglass className="w-4 h-4 text-[#00210C] shrink-0" />
                     <span>
                       Sisa waktu pengerjaan:{" "}

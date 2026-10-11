@@ -322,6 +322,7 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
     setOrder((prev) => ({
       ...prev,
       status: nextStatus,
+      status_pembayaran: nextStatus === "Diambil" ? "Lunas" : prev.status_pembayaran,
       riwayat_status: [
         {
           id: "temp-" + Date.now(),
