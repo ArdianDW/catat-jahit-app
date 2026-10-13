@@ -78,8 +78,11 @@ body {
   animation: 180ms ease-in both slide-out-to-right;
 }
 
-html {
-  scroll-behavior: smooth;
+html,
+body {
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 * {
