@@ -60,7 +60,15 @@ export default function DashboardLayout({
         : null;
 
   const handleHeaderBack = () => {
-    router.back();
+    document.documentElement.setAttribute("data-nav-direction", "back");
+    if ("startViewTransition" in document) {
+      (document as Document & { startViewTransition: (cb: () => void) => void })
+        .startViewTransition(() => {
+          router.back();
+        });
+    } else {
+      router.back();
+    }
   };
 
   const navItems = [
