@@ -40,9 +40,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-dvh overflow-hidden antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-dvh overflow-hidden flex flex-col bg-[#FAF6EE] overscroll-none">
+      <body className="min-h-full flex flex-col bg-[#FAF6EE]">
         <NavigationProgress />
         <ViewTransitionsProvider />
         {children}

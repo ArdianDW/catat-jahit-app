@@ -80,9 +80,8 @@ body {
 
 html,
 body {
-  height: 100dvh;
-  overflow: hidden;
-  overscroll-behavior: none;
+  height: 100%;
+  overscroll-behavior-y: none;
 }
 
 * {

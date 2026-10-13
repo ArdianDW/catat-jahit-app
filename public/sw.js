@@ -1,5 +1,5 @@
-const CACHE_STATIC = 'catatjahit-static-v5';
-const CACHE_PAGES  = 'catatjahit-pages-v5';
+const CACHE_STATIC = 'catatjahit-static-v6';
+const CACHE_PAGES  = 'catatjahit-pages-v6';
 
 const PRECACHE_STATIC = [
   '/manifest.json',
@@ -56,8 +56,14 @@ async function networkFirstNavigation(request) {
     }
     return response;
   } catch (_err) {
-    const cached = await cache.match(request);
+    const cached = await cache.match(request, { ignoreSearch: true });
     if (cached) return cached;
+
+    const url = new URL(request.url);
+    if (url.pathname === '/') {
+      const berandaCached = await cache.match('/beranda', { ignoreSearch: true });
+      if (berandaCached) return berandaCached;
+    }
 
     return new Response(
       `<!DOCTYPE html>
@@ -180,6 +186,10 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(async () => {
+        const cached = await caches.match(event.request, { ignoreSearch: true });
+        if (cached) return cached;
+        return new Response('', { status: 408, statusText: 'Offline' });
+      })
   );
 });
