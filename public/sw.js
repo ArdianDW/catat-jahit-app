@@ -1,5 +1,5 @@
-const CACHE_STATIC = 'catatjahit-static-v4';
-const CACHE_PAGES  = 'catatjahit-pages-v4';
+const CACHE_STATIC = 'catatjahit-static-v5';
+const CACHE_PAGES  = 'catatjahit-pages-v5';
 
 const PRECACHE_STATIC = [
   '/manifest.json',

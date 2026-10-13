@@ -21,6 +21,17 @@ export default function PwaInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          reg.update().catch(() => {});
+        })
+        .catch((err) => {
+          console.warn("PWA SW:", err);
+        });
+    }
+
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
@@ -32,12 +43,6 @@ export default function PwaInstallPrompt() {
     const isDismissed = sessionStorage.getItem("pwa_install_dismissed") === "true";
     if (isDismissed) {
       return;
-    }
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch((err) => {
-        console.warn("PWA SW:", err);
-      });
     }
 
     if (capturedInstallPrompt) {

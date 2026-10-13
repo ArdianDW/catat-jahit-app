@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Scissors, Users, Tag } from "lucide-react";
+import NetworkStatusBanner from "@/components/NetworkStatusBanner";
 
 export default function DashboardLayout({
   children,
@@ -129,6 +130,8 @@ export default function DashboardLayout({
         )}
       </header>
 
+      <NetworkStatusBanner />
+
       <main className="flex-1 overflow-y-auto p-4 pb-24">
         {children}
       </main>
@@ -227,7 +230,7 @@ export default function DashboardLayout({
         </div>
       )}
 
-      <nav className="shrink-0 bg-white border-t border-gray-200 grid grid-cols-4 z-10 min-h-[64px] shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
+      <nav className="shrink-0 bg-white border-t border-gray-200 grid grid-cols-4 z-10 min-h-[64px] pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
