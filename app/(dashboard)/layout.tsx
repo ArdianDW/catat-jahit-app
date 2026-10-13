@@ -22,8 +22,18 @@ export default function DashboardLayout({
   const isTambahOrder = pathname.startsWith("/order/baru");
   const isTambahPelanggan = pathname.startsWith("/pelanggan/baru");
   const isTambahLayanan = pathname.startsWith("/layanan/baru");
-  const isDetailOrder = pathname.startsWith("/order/") && !isTambahOrder;
-  const isFormPage = isTambahOrder || isTambahPelanggan || isTambahLayanan || isDetailOrder;
+  const isEditPelanggan = /^\/pelanggan\/[^/]+\/edit/.test(pathname);
+  const isEditOrder = /^\/order\/[^/]+\/edit/.test(pathname);
+  const isDetailPelanggan = /^\/pelanggan\/[^/]+$/.test(pathname) && !isTambahPelanggan;
+  const isDetailOrder = pathname.startsWith("/order/") && !isTambahOrder && !isEditOrder;
+  const isFormPage =
+    isTambahOrder ||
+    isTambahPelanggan ||
+    isTambahLayanan ||
+    isDetailPelanggan ||
+    isDetailOrder ||
+    isEditPelanggan ||
+    isEditOrder;
 
   const formTitle = isTambahOrder
     ? "Tambah Order"
@@ -31,9 +41,15 @@ export default function DashboardLayout({
       ? "Tambah Pelanggan"
       : isTambahLayanan
         ? "Tambah Layanan"
-        : isDetailOrder
-          ? "Detail Order"
-          : "";
+        : isEditPelanggan
+          ? "Edit Pelanggan"
+          : isEditOrder
+            ? "Edit Order"
+            : isDetailPelanggan
+              ? "Profil Pelanggan"
+              : isDetailOrder
+                ? "Detail Order"
+                : "";
 
   const singlePageFab = isOrder
     ? { label: "Tambah Order", href: "/order/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }

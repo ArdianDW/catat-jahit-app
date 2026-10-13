@@ -155,3 +155,111 @@ export async function createOrder(input: CreateOrderInput) {
     return { success: false, error: message };
   }
 }
+
+export interface UpdateOrderInput {
+  jenis_order: "Jahit Baru" | "Permak";
+  tanggal_deadline: string;
+  total_harga: number;
+  catatan_model?: string | null;
+  items?: CreateOrderItemInput[];
+}
+
+export async function updateOrder(orderId: string, input: UpdateOrderInput) {
+  try {
+    const supabase = await createClient();
+
+    if (!input.tanggal_deadline) {
+      return { success: false, error: "Tanggal deadline harus diisi" };
+    }
+
+    if (input.items) {
+      if (input.items.length === 0) {
+        return { success: false, error: "Minimal 1 barang harus dimasukkan" };
+      }
+      for (const item of input.items) {
+        if (!item.nama_item?.trim()) {
+          return { success: false, error: "Nama semua barang harus diisi" };
+        }
+        if (item.ukuran_sumber === "lain" && !item.ukuran_untuk?.trim()) {
+          return {
+            success: false,
+            error: `Nama orang untuk ukuran pada barang "${item.nama_item}" wajib diisi`,
+          };
+        }
+      }
+    }
+
+    const { error: orderError } = await supabase
+      .from("orders")
+      .update({
+        jenis_order: input.jenis_order,
+        tanggal_deadline: input.tanggal_deadline,
+        total_harga: input.total_harga,
+        catatan_model: input.catatan_model?.trim() || null,
+      })
+      .eq("id", orderId);
+
+    if (orderError) {
+      console.error("Error updateOrder:", orderError);
+      return { success: false, error: orderError.message };
+    }
+
+    if (input.items) {
+      const { error: delError } = await supabase
+        .from("item_order")
+        .delete()
+        .eq("order_id", orderId);
+
+      if (delError) {
+        console.error("Error deleting old order items:", delError);
+        return { success: false, error: delError.message };
+      }
+
+      const itemsToInsert = input.items.map((item) => ({
+        order_id: orderId,
+        layanan_id: item.layanan_id || null,
+        nama_item: item.nama_item.trim(),
+        jumlah: Math.max(1, item.jumlah),
+        harga_item: Math.max(0, item.harga_item),
+        ukuran_sumber: item.ukuran_sumber,
+        ukuran_untuk:
+          item.ukuran_sumber === "lain" ? item.ukuran_untuk?.trim() || null : null,
+        lingkar_dada:
+          item.ukuran_sumber === "lain" ? item.lingkar_dada || null : null,
+        lingkar_pinggang:
+          item.ukuran_sumber === "lain" ? item.lingkar_pinggang || null : null,
+        lingkar_pinggul:
+          item.ukuran_sumber === "lain" ? item.lingkar_pinggul || null : null,
+        panjang_bahu:
+          item.ukuran_sumber === "lain" ? item.panjang_bahu || null : null,
+        panjang_lengan:
+          item.ukuran_sumber === "lain" ? item.panjang_lengan || null : null,
+        panjang_baju:
+          item.ukuran_sumber === "lain" ? item.panjang_baju || null : null,
+        panjang_celana:
+          item.ukuran_sumber === "lain" ? item.panjang_celana || null : null,
+        catatan_ukuran:
+          item.ukuran_sumber === "lain" ? item.catatan_ukuran?.trim() || null : null,
+      }));
+
+      const { error: insertError } = await supabase
+        .from("item_order")
+        .insert(itemsToInsert);
+
+      if (insertError) {
+        console.error("Error inserting updated order items:", insertError);
+        return { success: false, error: insertError.message };
+      }
+    }
+
+    revalidatePath("/beranda");
+    revalidatePath("/order");
+    revalidatePath(`/order/${orderId}`);
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error("Exception in updateOrder:", err);
+    const message = err instanceof Error ? err.message : "Terjadi kesalahan sistem";
+    return { success: false, error: message };
+  }
+}

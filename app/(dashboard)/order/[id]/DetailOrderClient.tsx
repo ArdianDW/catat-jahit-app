@@ -19,6 +19,9 @@ import {
   X,
   History,
   ChevronRight,
+  Pencil,
+  Calendar,
+  Wallet,
 } from "lucide-react";
 import type { OrderDetail, StatusOrder } from "@/lib/data";
 import { advanceOrderStatus } from "@/lib/actions/order";
@@ -194,6 +197,8 @@ function KonfirmasiDiambilDialog({
     </div>
   );
 }
+
+
 
 type MeasurementItem = {
   nama_item: string;
@@ -373,6 +378,8 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
         />
       )}
 
+
+
       <div className="flex flex-col gap-4 pb-20">
         {errorMessage && (
           <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-xs">
@@ -398,7 +405,9 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
                 </span>
               )}
             </div>
-            <StatusBadge status={order.status} />
+            <div className="flex items-center gap-2">
+              <StatusBadge status={order.status} />
+            </div>
           </div>
 
           <div className="bg-[#EDF4FF] rounded-xl p-3.5 flex flex-col gap-3 border border-[#D0E4FF]/60">
@@ -440,6 +449,15 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
                 </a>
               </div>
             ) : null}
+
+            <button
+              type="button"
+              onClick={() => router.push(`/order/${order.id}/edit`)}
+              className="w-full min-h-[42px] rounded-xl bg-white hover:bg-gray-50 border border-gray-200/90 text-gray-700 hover:text-gray-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <Pencil className="w-4 h-4 text-[#465F86]" />
+              <span>Edit Data Pesanan</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">

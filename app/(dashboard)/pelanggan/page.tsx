@@ -1,7 +1,9 @@
-export default function PelangganPage() {
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-gray-800">Pelanggan</h2>
-    </div>
-  );
+import { getSemuaPelanggan } from "@/lib/data";
+import PelangganClient from "./PelangganClient";
+
+export const dynamic = "force-dynamic";
+
+export default async function PelangganPage() {
+  const pelanggan = await getSemuaPelanggan();
+  return <PelangganClient initialPelanggan={pelanggan} />;
 }

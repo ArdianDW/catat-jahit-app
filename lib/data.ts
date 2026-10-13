@@ -352,3 +352,122 @@ export async function getLayananOptions(jenis?: "Jahit" | "Permak"): Promise<Lay
     return [];
   }
 }
+
+export interface PelangganItem {
+  id: string;
+  nama_pelanggan: string;
+  no_hp: string;
+  alamat_singkat: string | null;
+  lingkar_dada: number | null;
+  lingkar_pinggang: number | null;
+  lingkar_pinggul: number | null;
+  panjang_bahu: number | null;
+  panjang_lengan: number | null;
+  panjang_baju: number | null;
+  panjang_celana: number | null;
+  catatan_ukuran: string | null;
+  tanggal_terakhir_diukur: string | null;
+  created_at: string;
+  total_order?: number;
+}
+
+export async function getSemuaPelanggan(): Promise<PelangganItem[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("pelanggan")
+      .select(`
+        id,
+        nama_pelanggan,
+        no_hp,
+        alamat_singkat,
+        lingkar_dada,
+        lingkar_pinggang,
+        lingkar_pinggul,
+        panjang_bahu,
+        panjang_lengan,
+        panjang_baju,
+        panjang_celana,
+        catatan_ukuran,
+        tanggal_terakhir_diukur,
+        created_at
+      `)
+      .order("nama_pelanggan", { ascending: true });
+
+    if (error) {
+      console.error("Error getSemuaPelanggan:", error);
+      return [];
+    }
+    return (data as unknown as PelangganItem[]) ?? [];
+  } catch (err) {
+    console.error("Exception in getSemuaPelanggan:", err);
+    return [];
+  }
+}
+
+export async function getDetailPelanggan(id: string): Promise<PelangganItem | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("pelanggan")
+      .select(`
+        id,
+        nama_pelanggan,
+        no_hp,
+        alamat_singkat,
+        lingkar_dada,
+        lingkar_pinggang,
+        lingkar_pinggul,
+        panjang_bahu,
+        panjang_lengan,
+        panjang_baju,
+        panjang_celana,
+        catatan_ukuran,
+        tanggal_terakhir_diukur,
+        created_at
+      `)
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      console.error("Error getDetailPelanggan:", error);
+      return null;
+    }
+    return data as unknown as PelangganItem;
+  } catch (err) {
+    console.error("Exception in getDetailPelanggan:", err);
+    return null;
+  }
+}
+
+export interface PelangganOrderItem {
+  id: string;
+  nomor_order: string;
+  jenis_order: "Jahit Baru" | "Permak";
+  tanggal_masuk: string;
+  tanggal_deadline: string;
+  total_harga: number;
+  status: StatusOrder;
+  status_pembayaran: "Belum Lunas" | "Lunas";
+}
+
+export async function getPesananPelanggan(pelangganId: string): Promise<PelangganOrderItem[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, nomor_order, jenis_order, tanggal_masuk, tanggal_deadline, total_harga, status, status_pembayaran")
+      .eq("pelanggan_id", pelangganId)
+      .order("tanggal_masuk", { ascending: false });
+
+    if (error) {
+      console.error("Error getPesananPelanggan:", error);
+      return [];
+    }
+    return (data as unknown as PelangganOrderItem[]) ?? [];
+  } catch (err) {
+    console.error("Exception in getPesananPelanggan:", err);
+    return [];
+  }
+}
+
