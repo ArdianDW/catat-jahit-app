@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { RingkasanBeranda, DeadlineOrderItem } from "@/lib/data";
 import { advanceOrderStatus } from "@/lib/actions/order";
+import PushNotificationManager from "@/components/PushNotificationManager";
 
 const AVATAR_PALETTES = [
   { bg: "#DCF8C6", text: "#075E54" },
@@ -279,6 +280,8 @@ export default function BerandaClient({
             <span>{currentDate}</span>
           </div>
         </section>
+
+        <PushNotificationManager />
 
         <section className="flex flex-col gap-3">
           <Link

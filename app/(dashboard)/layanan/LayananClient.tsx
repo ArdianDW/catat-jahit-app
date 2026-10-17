@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,8 +16,6 @@ import {
   CheckCircle2,
   Loader2,
   Sparkles,
-  Info,
-  HelpCircle,
 } from "lucide-react";
 import type { LayananItem } from "@/lib/data";
 import { toggleStatusLayanan, seedContohLayanan } from "@/lib/actions/layanan";
@@ -33,13 +31,15 @@ function formatRupiah(n: number) {
 export default function LayananClient({ initialLayanan }: LayananClientProps) {
   const router = useRouter();
   const [layananList, setLayananList] = useState<LayananItem[]>(initialLayanan);
+  const [prevInitialLayanan, setPrevInitialLayanan] = useState(initialLayanan);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"Semua" | "Jahit" | "Permak">("Semua");
   const [statusFilter, setStatusFilter] = useState<"Semua" | "Aktif" | "Nonaktif">("Semua");
 
-  useEffect(() => {
+  if (initialLayanan !== prevInitialLayanan) {
+    setPrevInitialLayanan(initialLayanan);
     setLayananList(initialLayanan);
-  }, [initialLayanan]);
+  }
 
   const [confirmItem, setConfirmItem] = useState<LayananItem | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);

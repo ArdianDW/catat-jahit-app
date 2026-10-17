@@ -17,8 +17,17 @@ if (typeof window !== "undefined") {
 }
 
 export default function PwaInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showPrompt, setShowPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(
+    () => capturedInstallPrompt
+  );
+  const [showPrompt, setShowPrompt] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    const isDismissed = sessionStorage.getItem("pwa_install_dismissed") === "true";
+    return Boolean(capturedInstallPrompt && !isStandalone && !isDismissed);
+  });
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -43,11 +52,6 @@ export default function PwaInstallPrompt() {
     const isDismissed = sessionStorage.getItem("pwa_install_dismissed") === "true";
     if (isDismissed) {
       return;
-    }
-
-    if (capturedInstallPrompt) {
-      setDeferredPrompt(capturedInstallPrompt);
-      setShowPrompt(true);
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {

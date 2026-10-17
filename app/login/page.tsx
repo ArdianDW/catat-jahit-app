@@ -54,7 +54,7 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">Silakan masuk ke akun Anda</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form method="post" onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="username"

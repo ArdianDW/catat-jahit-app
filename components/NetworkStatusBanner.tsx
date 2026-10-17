@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 
 export default function NetworkStatusBanner() {
-  const [status, setStatus] = useState<"offline" | "restored" | null>(null);
+  const [status, setStatus] = useState<"offline" | "restored" | null>(() => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return "offline";
+    }
+    return null;
+  });
 
   useEffect(() => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setStatus("offline");
-    }
-
     let restoreTimer: ReturnType<typeof setTimeout>;
 
     const handleOffline = () => {
