@@ -328,6 +328,56 @@ export interface LayananOption {
   aktif: boolean;
 }
 
+export interface LayananItem {
+  id: string;
+  nama_layanan: string;
+  harga_dasar: number;
+  deskripsi: string | null;
+  jenis: "Jahit" | "Permak";
+  aktif: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getSemuaLayanan(): Promise<LayananItem[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("layanan")
+      .select("id, nama_layanan, harga_dasar, deskripsi, jenis, aktif, created_at, updated_at")
+      .order("aktif", { ascending: false })
+      .order("nama_layanan", { ascending: true });
+
+    if (error) {
+      console.error("Error getSemuaLayanan:", error);
+      return [];
+    }
+    return (data as unknown as LayananItem[]) ?? [];
+  } catch (err) {
+    console.error("Exception in getSemuaLayanan:", err);
+    return [];
+  }
+}
+
+export async function getDetailLayanan(id: string): Promise<LayananItem | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("layanan")
+      .select("id, nama_layanan, harga_dasar, deskripsi, jenis, aktif, created_at, updated_at")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+    return data as unknown as LayananItem;
+  } catch (err) {
+    console.error("Exception in getDetailLayanan:", err);
+    return null;
+  }
+}
+
 export async function getLayananOptions(jenis?: "Jahit" | "Permak"): Promise<LayananOption[]> {
   try {
     const supabase = await createClient();

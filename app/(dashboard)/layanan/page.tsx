@@ -1,7 +1,10 @@
-export default function LayananPage() {
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-gray-800">Layanan</h2>
-    </div>
-  );
+import { getSemuaLayanan } from "@/lib/data";
+import LayananClient from "./LayananClient";
+
+export const dynamic = "force-dynamic";
+
+export default async function LayananPage() {
+  const layanan = await getSemuaLayanan();
+  return <LayananClient initialLayanan={layanan} />;
 }
+
