@@ -97,15 +97,17 @@ export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
     };
   }
 
-  const urgentOrders = (orders as {
+  interface UrgentOrderRaw {
     id: string;
     nomor_order: string;
     tanggal_deadline: string;
     status: string;
-    pelanggan: { nama_pelanggan: string } | null;
-  }[]) || [];
+    pelanggan: { nama_pelanggan: string } | { nama_pelanggan: string }[] | null;
+  }
 
-  if (urgentOrders.length === 0 && !isTest) {
+  const urgentOrders = (orders as unknown as UrgentOrderRaw[]) || [];
+
+  if (urgentOrders.length === 0) {
     return {
       success: true,
       message: "Tidak ada pesanan yang mendekati deadline (H-3 s.d lewat deadline). Notifikasi tidak dikirim.",
@@ -122,7 +124,10 @@ export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
 
   if (urgentOrders.length === 1) {
     const single = urgentOrders[0];
-    const nama = single.pelanggan?.nama_pelanggan || single.nomor_order;
+    const pelangganData = Array.isArray(single.pelanggan)
+      ? single.pelanggan[0]
+      : single.pelanggan;
+    const nama = pelangganData?.nama_pelanggan || single.nomor_order;
 
     const diffDays = Math.round(
       (new Date(single.tanggal_deadline).getTime() - new Date(todayStr).getTime()) /
