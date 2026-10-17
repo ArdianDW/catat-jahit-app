@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Scissors, Users, Tag } from "lucide-react";
+import { Home, Scissors, Users, Tag, LogOut, Loader2 } from "lucide-react";
 import NetworkStatusBanner from "@/components/NetworkStatusBanner";
+import { logout } from "@/lib/actions/auth";
 
 export default function DashboardLayout({
   children,
@@ -14,6 +15,8 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [fabOpen, setFabOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, startLogoutTransition] = useTransition();
 
   const isBeranda = pathname === "/beranda";
   const isOrder = pathname === "/order";
@@ -76,6 +79,12 @@ export default function DashboardLayout({
     }
   };
 
+  const handleLogout = () => {
+    startLogoutTransition(async () => {
+      await logout();
+    });
+  };
+
   const navItems = [
     { label: "Beranda", href: "/beranda", icon: Home },
     { label: "Order", href: "/order", icon: Scissors },
@@ -111,25 +120,39 @@ export default function DashboardLayout({
             </h1>
           </>
         ) : (
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-white shrink-0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="6" cy="6" r="3" />
-              <circle cx="6" cy="18" r="3" />
-              <line x1="20" y1="4" x2="8.12" y2="15.88" />
-              <line x1="14.47" y1="14.48" x2="20" y2="20" />
-              <line x1="8.12" y1="8.12" x2="12" y2="12" />
-            </svg>
-            <h1 className="text-lg font-semibold tracking-wide">
-              CatatJahit
-            </h1>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-white shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="6" cy="6" r="3" />
+                <circle cx="6" cy="18" r="3" />
+                <line x1="20" y1="4" x2="8.12" y2="15.88" />
+                <line x1="14.47" y1="14.48" x2="20" y2="20" />
+                <line x1="8.12" y1="8.12" x2="12" y2="12" />
+              </svg>
+              <h1 className="text-lg font-semibold tracking-wide">
+                CatatJahit
+              </h1>
+            </div>
+
+            {isBeranda && (
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(true)}
+                aria-label="Keluar dari akun"
+                title="Keluar dari akun"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            )}
           </div>
         )}
       </header>
@@ -259,6 +282,56 @@ export default function DashboardLayout({
           );
         })}
       </nav>
+
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            onClick={() => !isLoggingOut && setShowLogoutModal(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5 flex flex-col gap-4 z-10 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <LogOut className="w-5 h-5 text-[#BA1A1A]" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-800 text-sm">Keluar dari CatatJahit?</p>
+                <p className="text-xs text-gray-500 mt-0.5">Sesi akun akan diakhiri</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Anda harus memasukkan nama pengguna dan kata sandi kembali untuk masuk ke aplikasi.
+            </p>
+
+            <div className="flex gap-2.5 mt-1">
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(false)}
+                disabled={isLoggingOut}
+                className="flex-1 min-h-[44px] rounded-xl border border-gray-200 text-gray-600 font-medium text-xs hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer select-none disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="flex-1 min-h-[44px] rounded-xl bg-[#BA1A1A] hover:bg-[#9c1515] text-white font-bold text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer select-none disabled:opacity-50"
+              >
+                {isLoggingOut ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Keluar...</span>
+                  </>
+                ) : (
+                  <span>Ya, Keluar</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
