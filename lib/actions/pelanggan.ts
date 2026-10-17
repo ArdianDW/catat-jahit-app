@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export interface CreatePelangganInput {
@@ -19,7 +19,11 @@ export interface CreatePelangganInput {
 
 export async function createPelanggan(input: CreatePelangganInput) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     if (!input.nama_pelanggan?.trim()) {
       return { success: false, error: "Nama pelanggan harus diisi" };
@@ -75,7 +79,11 @@ export async function createPelanggan(input: CreatePelangganInput) {
 
 export async function updatePelanggan(id: string, input: CreatePelangganInput) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     if (!input.nama_pelanggan?.trim()) {
       return { success: false, error: "Nama pelanggan harus diisi" };
@@ -130,9 +138,12 @@ export async function updatePelanggan(id: string, input: CreatePelangganInput) {
 
 export async function deletePelanggan(id: string) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
-    // Periksa apakah pelanggan masih memiliki pesanan
     const { count, error: countError } = await supabase
       .from("orders")
       .select("id", { count: "exact", head: true })

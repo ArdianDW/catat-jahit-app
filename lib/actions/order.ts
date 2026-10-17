@@ -1,12 +1,16 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-
 
 export async function advanceOrderStatus(orderId: string) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
+
     const { data, error } = await supabase.rpc("ubah_status_order", {
       p_order_id: orderId,
     });
@@ -73,7 +77,11 @@ export interface CreateOrderInput {
 
 export async function createOrder(input: CreateOrderInput) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     if (!input.pelanggan_id) {
       return { success: false, error: "Pelanggan harus dipilih" };
@@ -166,7 +174,11 @@ export interface UpdateOrderInput {
 
 export async function updateOrder(orderId: string, input: UpdateOrderInput) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     if (!input.tanggal_deadline) {
       return { success: false, error: "Tanggal deadline harus diisi" };

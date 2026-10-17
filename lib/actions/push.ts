@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth";
 import { sendWelcomePush } from "@/lib/push-notifications";
 
 export interface PushSubscriptionInput {
@@ -13,10 +13,12 @@ export interface PushSubscriptionInput {
 
 export async function savePushSubscription(sub: PushSubscriptionInput) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
+    const user = auth.user;
 
     const { error } = await supabase.from("push_subscriptions").upsert(
       {
@@ -49,7 +51,12 @@ export async function savePushSubscription(sub: PushSubscriptionInput) {
 
 export async function removePushSubscription(endpoint: string) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
+
     await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
     return { success: true };
   } catch (err) {

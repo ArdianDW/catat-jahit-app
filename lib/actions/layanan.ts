@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export interface CreateLayananInput {
@@ -13,7 +13,11 @@ export interface CreateLayananInput {
 
 export async function createLayanan(input: CreateLayananInput) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     if (!input.nama_layanan?.trim()) {
       return { success: false, error: "Nama layanan harus diisi" };
@@ -60,7 +64,11 @@ export async function createLayanan(input: CreateLayananInput) {
 
 export async function updateLayanan(id: string, input: CreateLayananInput) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     if (!id) {
       return { success: false, error: "ID layanan tidak valid" };
@@ -110,7 +118,11 @@ export async function updateLayanan(id: string, input: CreateLayananInput) {
 
 export async function toggleStatusLayanan(id: string, aktif: boolean) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     if (!id) {
       return { success: false, error: "ID layanan tidak valid" };
@@ -140,7 +152,11 @@ export async function toggleStatusLayanan(id: string, aktif: boolean) {
 
 export async function seedContohLayanan() {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
     const contohLayanan = [
       {
