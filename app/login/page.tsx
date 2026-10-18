@@ -2,9 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
-const EMAIL_SUFFIX = "@catatjahit.app";
+import { loginAction } from "@/lib/actions/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,27 +15,18 @@ export default function LoginPage() {
     setError(null);
 
     const form = e.currentTarget;
-    const username = (form.elements.namedItem("username") as HTMLInputElement)
-      .value.trim();
-    const password = (form.elements.namedItem("password") as HTMLInputElement)
-      .value;
-
-    if (!username || !password) {
-      setError("Nama pengguna dan kata sandi wajib diisi.");
-      return;
-    }
-
-    const email = username.includes("@") ? username : `${username}${EMAIL_SUFFIX}`;
+    const username = (
+      form.elements.namedItem("username") as HTMLInputElement
+    ).value;
+    const password = (
+      form.elements.namedItem("password") as HTMLInputElement
+    ).value;
 
     startTransition(async () => {
-      const supabase = createClient();
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const result = await loginAction({ username, password });
 
-      if (authError) {
-        setError("Nama pengguna atau kata sandi salah.");
+      if (!result.success) {
+        setError(result.error);
         return;
       }
 
