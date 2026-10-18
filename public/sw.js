@@ -1,5 +1,4 @@
-const CACHE_STATIC = 'catatjahit-static-v6';
-const CACHE_PAGES  = 'catatjahit-pages-v6';
+const CACHE_STATIC = 'catatjahit-static-v8';
 
 const PRECACHE_STATIC = [
   '/manifest.json',
@@ -19,7 +18,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k !== CACHE_STATIC && k !== CACHE_PAGES)
+          .filter((k) => k !== CACHE_STATIC)
           .map((k) => caches.delete(k))
       )
     )
@@ -46,25 +45,10 @@ function isNavigationRequest(request) {
   return request.mode === 'navigate';
 }
 
-async function networkFirstNavigation(request) {
-  const cache = await caches.open(CACHE_PAGES);
-
+async function handleNavigation(request) {
   try {
-    const response = await fetch(request);
-    if (response.ok) {
-      cache.put(request, response.clone());
-    }
-    return response;
+    return await fetch(request);
   } catch (_err) {
-    const cached = await cache.match(request, { ignoreSearch: true });
-    if (cached) return cached;
-
-    const url = new URL(request.url);
-    if (url.pathname === '/') {
-      const berandaCached = await cache.match('/beranda', { ignoreSearch: true });
-      if (berandaCached) return berandaCached;
-    }
-
     return new Response(
       `<!DOCTYPE html>
 <html lang="id">
@@ -173,7 +157,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isNavigationRequest(event.request)) {
-    event.respondWith(networkFirstNavigation(event.request));
+    event.respondWith(handleNavigation(event.request));
     return;
   }
   event.respondWith(
