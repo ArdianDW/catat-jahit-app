@@ -68,6 +68,7 @@ export default function LoginPage() {
               type="text"
               placeholder="Nama pengguna"
               autoComplete="username"
+              maxLength={50}
               disabled={isPending}
               className="w-full min-h-[48px] px-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#6B8F71] focus:border-transparent disabled:opacity-60"
             />
@@ -87,6 +88,7 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Kata sandi"
                 autoComplete="current-password"
+                maxLength={100}
                 disabled={isPending}
                 className="w-full min-h-[48px] px-3 pr-16 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#6B8F71] focus:border-transparent disabled:opacity-60"
               />

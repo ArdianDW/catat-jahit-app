@@ -2,16 +2,9 @@
 
 import { requireAuth } from "@/lib/auth";
 import { sendWelcomePush } from "@/lib/push-notifications";
+import { pushSubscriptionSchema } from "@/lib/validations/push";
 
-export interface PushSubscriptionInput {
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
-
-export async function savePushSubscription(sub: PushSubscriptionInput) {
+export async function savePushSubscription(rawInput: unknown) {
   try {
     const auth = await requireAuth();
     if (!auth.authenticated) {
@@ -19,6 +12,13 @@ export async function savePushSubscription(sub: PushSubscriptionInput) {
     }
     const supabase = auth.supabase;
     const user = auth.user;
+
+    const parsed = pushSubscriptionSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data subscription tidak valid." };
+    }
+    const sub = parsed.data;
 
     const { error } = await supabase.from("push_subscriptions").upsert(
       {

@@ -2,22 +2,11 @@
 
 import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { pelangganSchema } from "@/lib/validations/pelanggan";
+import { sanitizeText } from "@/lib/utils/sanitize";
+export type { PelangganInput as CreatePelangganInput } from "@/lib/validations/pelanggan";
 
-export interface CreatePelangganInput {
-  nama_pelanggan: string;
-  no_hp: string;
-  alamat_singkat?: string | null;
-  lingkar_dada?: number | null;
-  lingkar_pinggang?: number | null;
-  lingkar_pinggul?: number | null;
-  panjang_bahu?: number | null;
-  panjang_lengan?: number | null;
-  panjang_baju?: number | null;
-  panjang_celana?: number | null;
-  catatan_ukuran?: string | null;
-}
-
-export async function createPelanggan(input: CreatePelangganInput) {
+export async function createPelanggan(rawInput: unknown) {
   try {
     const auth = await requireAuth();
     if (!auth.authenticated) {
@@ -25,12 +14,12 @@ export async function createPelanggan(input: CreatePelangganInput) {
     }
     const supabase = auth.supabase;
 
-    if (!input.nama_pelanggan?.trim()) {
-      return { success: false, error: "Nama pelanggan harus diisi" };
+    const parsed = pelangganSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data tidak valid." };
     }
-    if (!input.no_hp?.trim()) {
-      return { success: false, error: "Nomor HP harus diisi" };
-    }
+    const input = parsed.data;
 
     const hasUkuran = Boolean(
       input.lingkar_dada ||
@@ -45,9 +34,9 @@ export async function createPelanggan(input: CreatePelangganInput) {
     const { data, error } = await supabase
       .from("pelanggan")
       .insert({
-        nama_pelanggan: input.nama_pelanggan.trim(),
+        nama_pelanggan: sanitizeText(input.nama_pelanggan),
         no_hp: input.no_hp.trim(),
-        alamat_singkat: input.alamat_singkat?.trim() || null,
+        alamat_singkat: input.alamat_singkat ? sanitizeText(input.alamat_singkat) : null,
         lingkar_dada: input.lingkar_dada || null,
         lingkar_pinggang: input.lingkar_pinggang || null,
         lingkar_pinggul: input.lingkar_pinggul || null,
@@ -55,7 +44,7 @@ export async function createPelanggan(input: CreatePelangganInput) {
         panjang_lengan: input.panjang_lengan || null,
         panjang_baju: input.panjang_baju || null,
         panjang_celana: input.panjang_celana || null,
-        catatan_ukuran: input.catatan_ukuran?.trim() || null,
+        catatan_ukuran: input.catatan_ukuran ? sanitizeText(input.catatan_ukuran) : null,
         tanggal_terakhir_diukur: hasUkuran ? new Date().toISOString().slice(0, 10) : null,
       })
       .select("id, nama_pelanggan")
@@ -77,7 +66,7 @@ export async function createPelanggan(input: CreatePelangganInput) {
   }
 }
 
-export async function updatePelanggan(id: string, input: CreatePelangganInput) {
+export async function updatePelanggan(id: string, rawInput: unknown) {
   try {
     const auth = await requireAuth();
     if (!auth.authenticated) {
@@ -85,12 +74,12 @@ export async function updatePelanggan(id: string, input: CreatePelangganInput) {
     }
     const supabase = auth.supabase;
 
-    if (!input.nama_pelanggan?.trim()) {
-      return { success: false, error: "Nama pelanggan harus diisi" };
+    const parsed = pelangganSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data tidak valid." };
     }
-    if (!input.no_hp?.trim()) {
-      return { success: false, error: "Nomor HP harus diisi" };
-    }
+    const input = parsed.data;
 
     const hasUkuran =
       input.lingkar_dada ||
@@ -104,9 +93,9 @@ export async function updatePelanggan(id: string, input: CreatePelangganInput) {
     const { error } = await supabase
       .from("pelanggan")
       .update({
-        nama_pelanggan: input.nama_pelanggan.trim(),
+        nama_pelanggan: sanitizeText(input.nama_pelanggan),
         no_hp: input.no_hp.trim(),
-        alamat_singkat: input.alamat_singkat?.trim() || null,
+        alamat_singkat: input.alamat_singkat ? sanitizeText(input.alamat_singkat) : null,
         lingkar_dada: input.lingkar_dada || null,
         lingkar_pinggang: input.lingkar_pinggang || null,
         lingkar_pinggul: input.lingkar_pinggul || null,
@@ -114,7 +103,7 @@ export async function updatePelanggan(id: string, input: CreatePelangganInput) {
         panjang_lengan: input.panjang_lengan || null,
         panjang_baju: input.panjang_baju || null,
         panjang_celana: input.panjang_celana || null,
-        catatan_ukuran: input.catatan_ukuran?.trim() || null,
+        catatan_ukuran: input.catatan_ukuran ? sanitizeText(input.catatan_ukuran) : null,
         tanggal_terakhir_diukur: hasUkuran ? new Date().toISOString().slice(0, 10) : null,
       })
       .eq("id", id);

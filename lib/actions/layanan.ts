@@ -2,16 +2,11 @@
 
 import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { layananSchema } from "@/lib/validations/layanan";
+import { sanitizeText } from "@/lib/utils/sanitize";
+export type { LayananInput as CreateLayananInput } from "@/lib/validations/layanan";
 
-export interface CreateLayananInput {
-  nama_layanan: string;
-  harga_dasar: number;
-  deskripsi?: string | null;
-  jenis: "Jahit" | "Permak";
-  aktif?: boolean;
-}
-
-export async function createLayanan(input: CreateLayananInput) {
+export async function createLayanan(rawInput: unknown) {
   try {
     const auth = await requireAuth();
     if (!auth.authenticated) {
@@ -19,27 +14,19 @@ export async function createLayanan(input: CreateLayananInput) {
     }
     const supabase = auth.supabase;
 
-    if (!input.nama_layanan?.trim()) {
-      return { success: false, error: "Nama layanan harus diisi" };
+    const parsed = layananSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data tidak valid." };
     }
-    if (
-      input.harga_dasar === undefined ||
-      input.harga_dasar === null ||
-      isNaN(input.harga_dasar) ||
-      input.harga_dasar < 0
-    ) {
-      return { success: false, error: "Harga dasar harus berupa angka minimal 0" };
-    }
-    if (input.jenis !== "Jahit" && input.jenis !== "Permak") {
-      return { success: false, error: "Jenis layanan harus Jahit atau Permak" };
-    }
+    const input = parsed.data;
 
     const { data, error } = await supabase
       .from("layanan")
       .insert({
-        nama_layanan: input.nama_layanan.trim(),
-        harga_dasar: Math.round(input.harga_dasar),
-        deskripsi: input.deskripsi?.trim() || null,
+        nama_layanan: sanitizeText(input.nama_layanan),
+        harga_dasar: input.harga_dasar,
+        deskripsi: input.deskripsi ? sanitizeText(input.deskripsi) : null,
         jenis: input.jenis,
         aktif: input.aktif !== undefined ? input.aktif : true,
       })
@@ -62,7 +49,7 @@ export async function createLayanan(input: CreateLayananInput) {
   }
 }
 
-export async function updateLayanan(id: string, input: CreateLayananInput) {
+export async function updateLayanan(id: string, rawInput: unknown) {
   try {
     const auth = await requireAuth();
     if (!auth.authenticated) {
@@ -73,27 +60,20 @@ export async function updateLayanan(id: string, input: CreateLayananInput) {
     if (!id) {
       return { success: false, error: "ID layanan tidak valid" };
     }
-    if (!input.nama_layanan?.trim()) {
-      return { success: false, error: "Nama layanan harus diisi" };
+
+    const parsed = layananSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data tidak valid." };
     }
-    if (
-      input.harga_dasar === undefined ||
-      input.harga_dasar === null ||
-      isNaN(input.harga_dasar) ||
-      input.harga_dasar < 0
-    ) {
-      return { success: false, error: "Harga dasar harus berupa angka minimal 0" };
-    }
-    if (input.jenis !== "Jahit" && input.jenis !== "Permak") {
-      return { success: false, error: "Jenis layanan harus Jahit atau Permak" };
-    }
+    const input = parsed.data;
 
     const { error } = await supabase
       .from("layanan")
       .update({
-        nama_layanan: input.nama_layanan.trim(),
-        harga_dasar: Math.round(input.harga_dasar),
-        deskripsi: input.deskripsi?.trim() || null,
+        nama_layanan: sanitizeText(input.nama_layanan),
+        harga_dasar: input.harga_dasar,
+        deskripsi: input.deskripsi ? sanitizeText(input.deskripsi) : null,
         jenis: input.jenis,
         aktif: input.aktif !== undefined ? input.aktif : true,
       })
