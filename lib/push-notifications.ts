@@ -18,7 +18,9 @@ export interface ReminderResult {
   failedCount: number;
 }
 
-export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
+export async function sendDeadlineReminderPush(
+  isTest: boolean = false
+): Promise<ReminderResult> {
   if (!vapidPublicKey || !vapidPrivateKey) {
     return {
       success: false,
@@ -51,8 +53,10 @@ export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
   const activeSubs = subscriptions || [];
   if (activeSubs.length === 0) {
     return {
-      success: true,
-      message: "Belum ada perangkat yang mengaktifkan izin notifikasi push.",
+      success: !isTest,
+      message: isTest
+        ? "Belum ada perangkat yang mengaktifkan izin notifikasi push. Aktifkan notifikasi di perangkat ini terlebih dahulu."
+        : "Belum ada perangkat yang mengaktifkan izin notifikasi push.",
       totalOrders: 0,
       totalSubscribers: 0,
       sentCount: 0,
@@ -107,7 +111,7 @@ export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
 
   const urgentOrders = (orders as unknown as UrgentOrderRaw[]) || [];
 
-  if (urgentOrders.length === 0) {
+  if (urgentOrders.length === 0 && !isTest) {
     return {
       success: true,
       message: "Tidak ada pesanan yang mendekati deadline (H-3 s.d lewat deadline). Notifikasi tidak dikirim.",
@@ -147,7 +151,7 @@ export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
       notifTitle = "🧵 Pengingat Deadline (H-3)";
       notifBody = `Pesanan ${nama} tersisa ${diffDays} hari lagi.`;
     }
-  } else {
+  } else if (urgentOrders.length > 1) {
     const overdueCount = urgentOrders.filter(
       (o) => o.tanggal_deadline < todayStr
     ).length;
@@ -165,6 +169,9 @@ export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
       notifTitle = `🧵 ${urgentOrders.length} Pesanan Mendekati Deadline`;
       notifBody = `Pengingat pagi: ada ${urgentOrders.length} pesanan yang harus diselesaikan dalam 3 hari ke depan.`;
     }
+  } else if (isTest) {
+    notifTitle = "🔔 Tes Notifikasi - CatatJahit";
+    notifBody = "Semua pesanan aman dan terkendali. Fitur pengingat deadline berfungsi normal!";
   }
 
   const payload = JSON.stringify({
@@ -204,8 +211,13 @@ export async function sendDeadlineReminderPush(): Promise<ReminderResult> {
   }
 
   return {
-    success: true,
-    message: `Notifikasi berhasil dikirim ke ${sentCount} perangkat (${failedCount} gagal/kedaluwarsa).`,
+    success: sentCount > 0,
+    message:
+      sentCount > 0
+        ? `Notifikasi ${isTest ? "tes " : ""}berhasil dikirim ke ${sentCount} perangkat${
+            failedCount > 0 ? ` (${failedCount} gagal/kedaluwarsa)` : ""
+          }.`
+        : `Gagal mengirim notifikasi (${failedCount} gagal/kedaluwarsa).`,
     totalOrders: urgentOrders.length,
     totalSubscribers: activeSubs.length,
     sentCount,

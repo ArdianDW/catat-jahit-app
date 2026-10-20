@@ -19,6 +19,7 @@ import {
 import type { RingkasanBeranda, DeadlineOrderItem } from "@/lib/data";
 import { advanceOrderStatus } from "@/lib/actions/order";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import TestNotificationButton from "@/components/TestNotificationButton";
 
 const AVATAR_PALETTES = [
   { bg: "#DCF8C6", text: "#075E54" },
@@ -299,6 +300,8 @@ export default function BerandaClient({
             <UserPlus className="w-4 h-4 shrink-0 stroke-[2.2]" />
             <span>Tambah Pelanggan</span>
           </Link>
+
+          <TestNotificationButton />
         </section>
 
         <section className="grid grid-cols-3 gap-2.5">

@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { sendWelcomePush } from "@/lib/push-notifications";
+import { sendWelcomePush, sendDeadlineReminderPush } from "@/lib/push-notifications";
 
 export interface PushSubscriptionInput {
   endpoint: string;
@@ -57,3 +57,22 @@ export async function removePushSubscription(endpoint: string) {
     return { success: false };
   }
 }
+
+export async function sendTestPushNotification() {
+  try {
+    const result = await sendDeadlineReminderPush(true);
+    return result;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Terjadi kesalahan";
+    console.error("Exception sendTestPushNotification:", err);
+    return {
+      success: false,
+      message,
+      totalOrders: 0,
+      totalSubscribers: 0,
+      sentCount: 0,
+      failedCount: 0,
+    };
+  }
+}
+
