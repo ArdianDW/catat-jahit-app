@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useDeferredValue } from "react";
+import { useState, useEffect, useTransition, useDeferredValue } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,6 +19,7 @@ import { formatRupiah, formatDeadline } from "@/lib/utils/format";
 import { getAvatarColors, getInitials } from "@/lib/utils/avatar";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
 
 const FILTER_TABS: { label: string; value: StatusOrder | "Semua" }[] = [
   { label: "Semua", value: "Semua" },
@@ -41,7 +42,12 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [confirmOrder, setConfirmOrder] = useState<OrderItem | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
 
   const filtered = orders.filter((o) => {
     if (activeFilter !== "Semua" && o.status !== activeFilter) return false;
@@ -80,7 +86,18 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
       Diambil: null,
     };
     const next = nextStatus[currentStatus];
-    if (!next) { setUpdatingId(null); return; }
+    if (!next) {
+      setUpdatingId(null);
+      return;
+    }
+
+    const res = await advanceOrderStatus(orderId);
+    setUpdatingId(null);
+
+    if (!res.success) {
+      setErrorMessage(res.error || "Gagal mengubah status");
+      return;
+    }
 
     setOrders((prev) =>
       prev.map((o) =>
@@ -93,24 +110,18 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
           : o
       )
     );
-
-    const res = await advanceOrderStatus(orderId);
-    setUpdatingId(null);
-
-    if (!res.success) {
-      setErrorMessage(res.error || "Gagal mengubah status");
-      setOrders(initialOrders);
-      return;
-    }
-
-    startTransition(() => { router.refresh(); });
+    setActiveFilter(next);
+    setToastMessage("Status berhasil diperbarui");
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   const handleConfirmDiambil = async () => {
     if (!confirmOrder) return;
     const orderId = confirmOrder.id;
-    setConfirmOrder(null);
     await doAdvance(orderId, "Selesai");
+    setConfirmOrder(null);
   };
 
   return (
@@ -128,6 +139,15 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
         isLoading={confirmOrder ? updatingId === confirmOrder.id : false}
         position="bottom"
       />
+
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type="success"
+          onClose={() => setToastMessage(null)}
+          duration={3000}
+        />
+      )}
 
       <div className="flex flex-col gap-4">
         <section className="flex flex-col gap-1">
@@ -328,7 +348,7 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
                   {canAdvance && (
                     <button
                       type="button"
-                      disabled={isUpdating}
+                      disabled={updatingId !== null}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAdvance(order);
@@ -344,9 +364,15 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
                       }`}
                     >
                       {isUpdating ? (
-                        <><Loader2 className="w-4 h-4 animate-spin shrink-0" /><span>Menyimpan...</span></>
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white" />
+                          <span>Menyimpan...</span>
+                        </>
                       ) : (
-                        <><ArrowRight className="w-4 h-4 shrink-0 stroke-[2.2]" /><span>Lanjut ke: {nextLabel[order.status]}</span></>
+                        <>
+                          <ArrowRight className="w-4 h-4 shrink-0 stroke-[2.2]" />
+                          <span>Lanjut ke: {nextLabel[order.status]}</span>
+                        </>
                       )}
                     </button>
                   )}

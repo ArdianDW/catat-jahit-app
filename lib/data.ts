@@ -119,11 +119,12 @@ export async function getSemuaOrder(statusFilter?: StatusOrder): Promise<OrderIt
         status,
         status_pembayaran,
         catatan_model,
+        created_at,
         pelanggan:pelanggan_id ( id, nama_pelanggan, no_hp ),
         item_order ( id, nama_item, jumlah, harga_item )
       `
       )
-      .order("tanggal_deadline", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (statusFilter) {
       query = query.eq("status", statusFilter);
