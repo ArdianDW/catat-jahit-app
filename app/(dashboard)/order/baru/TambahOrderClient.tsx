@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,69 +8,25 @@ import {
   Check,
   ChevronRight,
   Plus,
-  Trash2,
   Ruler,
-  ShoppingBag,
   Loader2,
   AlertCircle,
   CheckCircle2,
   X,
-  ChevronDown,
-  UserPlus,
   Scissors,
   Pencil,
   Calendar,
   Wallet,
   FileText,
   Hourglass,
+  UserPlus,
 } from "lucide-react";
 import type { PelangganOption, LayananOption } from "@/lib/data";
 import { createOrder, type CreateOrderItemInput } from "@/lib/actions/order";
-
-const AVATAR_PALETTES = [
-  { bg: "#DCF8C6", text: "#075E54" },
-  { bg: "#D0E4FF", text: "#004881" },
-  { bg: "#FFE0B2", text: "#E65100" },
-  { bg: "#FCE4EC", text: "#C2185B" },
-  { bg: "#E8EAF6", text: "#283593" },
-  { bg: "#E0F2F1", text: "#00695C" },
-];
-
-function getAvatarColors(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff;
-  }
-  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
-}
-
-function getInitials(name: string): string {
-  if (!name || !name.trim()) return "??";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-type UkuranSumber = "pelanggan" | "lain" | "tanpa";
-
-interface ItemForm {
-  id: string;
-  nama_item: string;
-  layanan_id: string | null;
-  layanan_nama: string | null;
-  jumlah: number;
-  harga_item: number;
-  ukuran_sumber: UkuranSumber;
-  ukuran_untuk: string;
-  lingkar_dada: string;
-  lingkar_pinggang: string;
-  lingkar_pinggul: string;
-  panjang_bahu: string;
-  panjang_lengan: string;
-  panjang_baju: string;
-  panjang_celana: string;
-  catatan_ukuran: string;
-}
+import { formatRupiah, formatDateIndo, getSisaHari, parseMeasurement } from "@/lib/utils/format";
+import { getAvatarColors, getInitials } from "@/lib/utils/avatar";
+import Avatar from "@/components/ui/Avatar";
+import ItemOrderCard, { type ItemForm, createNewItem } from "@/components/order/ItemOrderCard";
 
 interface OrderForm {
   pelanggan: PelangganOption | null;
@@ -81,294 +37,8 @@ interface OrderForm {
   catatan_model: string;
 }
 
-function formatRupiah(n: number) {
-  return "Rp " + n.toLocaleString("id-ID");
-}
-
-function formatDateIndo(dateStr: string): string {
-  if (!dateStr) return "-";
-  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
-  const MONTHS = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-  ];
-  return `${d} ${MONTHS[m - 1]} ${y}`;
-}
-
-function getSisaHari(deadlineStr: string): number | null {
-  if (!deadlineStr) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const [y, m, d] = deadlineStr.slice(0, 10).split("-").map(Number);
-  const target = new Date(y, m - 1, d);
-  target.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 function getTodayStr() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function parseMeasurement(v: string): number | null {
-  const n = parseFloat(v.replace(",", "."));
-  return isNaN(n) || n <= 0 ? null : n;
-}
-
-function newItem(): ItemForm {
-  return {
-    id: crypto.randomUUID(),
-    nama_item: "",
-    layanan_id: null,
-    layanan_nama: null,
-    jumlah: 1,
-    harga_item: 0,
-    ukuran_sumber: "pelanggan",
-    ukuran_untuk: "",
-    lingkar_dada: "",
-    lingkar_pinggang: "",
-    lingkar_pinggul: "",
-    panjang_bahu: "",
-    panjang_lengan: "",
-    panjang_baju: "",
-    panjang_celana: "",
-    catatan_ukuran: "",
-  };
-}
-
-function LayananDropdown({
-  layananList,
-  value,
-  onChange,
-}: {
-  layananList: LayananOption[];
-  value: { id: string | null; nama: string | null };
-  onChange: (id: string | null, nama: string | null, harga: number) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-left flex items-center justify-between gap-2 hover:border-gray-300 transition-colors cursor-pointer"
-      >
-        <span className={value.nama ? "text-gray-800 font-medium" : "text-gray-400"}>
-          {value.nama ?? "Pilih layanan (opsional)"}
-        </span>
-        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-      </button>
-      {open && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
-          <button
-            type="button"
-            onClick={() => { onChange(null, null, 0); setOpen(false); }}
-            className="w-full px-3.5 py-2.5 text-sm text-left text-gray-400 hover:bg-gray-50 italic border-b border-gray-100"
-          >
-            Tanpa layanan
-          </button>
-          {layananList.map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              onClick={() => { onChange(l.id, l.nama_layanan, l.harga_dasar); setOpen(false); }}
-              className="w-full px-3.5 py-2.5 text-sm text-left hover:bg-gray-50 flex items-center justify-between gap-2 border-b border-gray-50 last:border-0"
-            >
-              <span className="font-medium text-gray-800">{l.nama_layanan}</span>
-              <span className="text-xs text-gray-400 shrink-0">{formatRupiah(l.harga_dasar)}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ItemCard({
-  item,
-  index,
-  layananList,
-  pelangganHasUkuran,
-  showRemove,
-  onChange,
-  onRemove,
-}: {
-  item: ItemForm;
-  index: number;
-  layananList: LayananOption[];
-  pelangganHasUkuran: boolean;
-  showRemove: boolean;
-  onChange: (updated: ItemForm) => void;
-  onRemove: () => void;
-}) {
-  const upd = (patch: Partial<ItemForm>) => onChange({ ...item, ...patch });
-
-  const measureFields: { key: keyof ItemForm; label: string }[] = [
-    { key: "lingkar_dada", label: "Lingkar Dada" },
-    { key: "lingkar_pinggang", label: "Lingkar Pinggang" },
-    { key: "lingkar_pinggul", label: "Lingkar Pinggul" },
-    { key: "panjang_bahu", label: "Panjang Bahu" },
-    { key: "panjang_lengan", label: "Panjang Lengan" },
-    { key: "panjang_baju", label: "Panjang Baju" },
-    { key: "panjang_celana", label: "Panjang Celana" },
-  ];
-
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col gap-3.5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#EFF3EE] flex items-center justify-center shrink-0">
-            <ShoppingBag className="w-3.5 h-3.5 text-[#6B8F71]" />
-          </div>
-          <span className="text-sm font-bold text-gray-700">Barang {index + 1}</span>
-        </div>
-        {showRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="cursor-pointer p-1"
-          >
-            <Trash2 className="w-4 h-4 text-red-400" />
-          </button>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-gray-500">Nama Barang *</label>
-        <input
-          type="text"
-          value={item.nama_item}
-          onChange={(e) => upd({ nama_item: e.target.value })}
-          placeholder="cth: Baju Kebaya, Celana Panjang"
-          className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-gray-500">Layanan</label>
-        <LayananDropdown
-          layananList={layananList}
-          value={{ id: item.layanan_id, nama: item.layanan_nama }}
-          onChange={(id, nama, harga) =>
-            upd({ layanan_id: id, layanan_nama: nama, harga_item: harga > 0 ? harga : item.harga_item })
-          }
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-500">Jumlah *</label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={item.jumlah}
-            onChange={(e) => upd({ jumlah: Math.max(1, parseInt(e.target.value) || 1) })}
-            className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-500">Harga (Rp) *</label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={item.harga_item || ""}
-            onChange={(e) => upd({ harga_item: Math.max(0, parseInt(e.target.value) || 0) })}
-            placeholder="0"
-            className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-gray-500">Sumber Ukuran</label>
-        <div className="grid grid-cols-3 gap-2">
-          {([
-            { value: "pelanggan" as UkuranSumber, label: "Data Pelanggan" },
-            { value: "lain" as UkuranSumber, label: "Ukuran Lain" },
-            { value: "tanpa" as UkuranSumber, label: "Tanpa Ukuran" },
-          ]).map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => upd({ ukuran_sumber: opt.value })}
-              className={`py-2 px-2 rounded-lg border text-xs font-medium transition-all cursor-pointer text-center leading-tight ${
-                item.ukuran_sumber === opt.value
-                  ? "bg-[#6B8F71] border-[#6B8F71] text-white shadow-sm"
-                  : "bg-[#EDF4FF] border-gray-200 text-gray-500 hover:border-gray-300"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        {item.ukuran_sumber === "pelanggan" && !pelangganHasUkuran && (
-          <p className="text-[11px] text-amber-600 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3 shrink-0" />
-            Pelanggan belum punya data ukuran tersimpan
-          </p>
-        )}
-      </div>
-
-      {item.ukuran_sumber === "lain" && (
-        <div className="flex flex-col gap-3 pt-1 border-t border-gray-100">
-          <div className="flex items-center gap-1.5">
-            <Ruler className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Detail Ukuran (cm)</span>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500">Ukuran untuk (nama)</label>
-            <input
-              type="text"
-              value={item.ukuran_untuk}
-              onChange={(e) => upd({ ukuran_untuk: e.target.value })}
-              placeholder="cth: Ibu, Anak Sulung"
-              className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {measureFields.map(({ key, label }) => (
-              <div key={key} className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium text-gray-400">{label}</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={item[key] as string}
-                    onChange={(e) => upd({ [key]: e.target.value })}
-                    placeholder="–"
-                    className="w-full min-h-[40px] pl-3 pr-8 py-2 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm placeholder:text-gray-300 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-medium pointer-events-none">cm</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500">Catatan Ukuran</label>
-            <textarea
-              rows={2}
-              value={item.catatan_ukuran}
-              onChange={(e) => upd({ catatan_ukuran: e.target.value })}
-              placeholder="cth: Lengan agak panjang"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none"
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function TambahOrderClient({
@@ -385,18 +55,19 @@ export default function TambahOrderClient({
   const STEP_TITLES = [
     "Pilih Pelanggan",
     "Pilih Jenis Order",
-    "Daftar barang Pesanan",
+    "Daftar Barang Pesanan",
     "Tanggal & Pembayaran",
     "Ringkasan Pesanan",
   ];
 
   const [step, setStep] = useState(1);
-  const [search, setSearch] = useState("");
+  const [searchRaw, setSearchRaw] = useState("");
+  const search = useDeferredValue(searchRaw);
 
   const [form, setForm] = useState<OrderForm>({
     pelanggan: null,
     jenis_order: "Jahit Baru",
-    items: [newItem()],
+    items: [createNewItem()],
     tanggal_deadline: "",
     total_harga_str: "",
     catatan_model: "",
@@ -522,6 +193,7 @@ export default function TambahOrderClient({
 
   return (
     <div className="flex flex-col gap-5 pb-4">
+      {/* Progress stepper */}
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium text-gray-400">
           Langkah {step} dari {TOTAL_STEPS}
@@ -552,15 +224,16 @@ export default function TambahOrderClient({
         </div>
       )}
 
+      {/* ── Step 1: Pilih Pelanggan ── */}
       {step === 1 && (
         <div className="flex flex-col gap-3">
-          {/* Search bar */}
           <div className="relative flex items-center">
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
             <input
+              id="pelanggan-search"
               type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchRaw}
+              onChange={(e) => setSearchRaw(e.target.value)}
               placeholder="Cari nama atau nomor HP..."
               className="w-full min-h-[44px] pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
             />
@@ -574,7 +247,7 @@ export default function TambahOrderClient({
             <span>Tambah Pelanggan Baru</span>
           </Link>
 
-          {!search.trim() && (
+          {!searchRaw.trim() && (
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">
               Riwayat Pelanggan
             </p>
@@ -588,7 +261,7 @@ export default function TambahOrderClient({
             ) : (
               displayedPelanggan.map((p) => {
                 const isSelected = form.pelanggan?.id === p.id;
-                const avatar = getAvatarColors(p.nama_pelanggan + p.id);
+                const avatarColors = getAvatarColors(p.nama_pelanggan + p.id);
                 const initials = getInitials(p.nama_pelanggan);
                 return (
                   <button
@@ -596,15 +269,13 @@ export default function TambahOrderClient({
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, pelanggan: p }))}
                     className={`w-full flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-all cursor-pointer text-left bg-white ${
-                      isSelected
-                        ? "border-[#6B8F71]"
-                        : "border-gray-200 hover:border-gray-300"
+                      isSelected ? "border-[#6B8F71]" : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-                        style={{ backgroundColor: avatar.bg, color: avatar.text }}
+                        style={{ backgroundColor: avatarColors.bg, color: avatarColors.text }}
                       >
                         {initials}
                       </div>
@@ -620,13 +291,9 @@ export default function TambahOrderClient({
                         )}
                       </div>
                     </div>
-                    <div
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                        isSelected
-                          ? "bg-[#6B8F71] border-[#6B8F71]"
-                          : "border-gray-300 bg-white"
-                      }`}
-                    >
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                      isSelected ? "bg-[#6B8F71] border-[#6B8F71]" : "border-gray-300 bg-white"
+                    }`}>
                       {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
                     </div>
                   </button>
@@ -638,22 +305,10 @@ export default function TambahOrderClient({
           {form.pelanggan && (
             <div className="p-3.5 rounded-xl bg-white border border-[#6B8F71] flex items-center justify-between gap-3 mt-1 shadow-xs">
               <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-                  style={{
-                    backgroundColor: getAvatarColors(form.pelanggan.nama_pelanggan + form.pelanggan.id).bg,
-                    color: getAvatarColors(form.pelanggan.nama_pelanggan + form.pelanggan.id).text,
-                  }}
-                >
-                  {getInitials(form.pelanggan.nama_pelanggan)}
-                </div>
+                <Avatar name={form.pelanggan.nama_pelanggan} seedId={form.pelanggan.id} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-[#6B8F71] uppercase tracking-wide">
-                    Pelanggan Terpilih
-                  </p>
-                  <p className="text-sm font-bold text-gray-800 truncate">
-                    {form.pelanggan.nama_pelanggan}
-                  </p>
+                  <p className="text-[11px] font-bold text-[#6B8F71] uppercase tracking-wide">Pelanggan Terpilih</p>
+                  <p className="text-sm font-bold text-gray-800 truncate">{form.pelanggan.nama_pelanggan}</p>
                   <p className="text-xs text-gray-400">{form.pelanggan.no_hp}</p>
                 </div>
               </div>
@@ -665,19 +320,12 @@ export default function TambahOrderClient({
         </div>
       )}
 
+      {/* ── Step 2: Jenis Order ── */}
       {step === 2 && (
         <div className="flex flex-col gap-4">
           {form.pelanggan && (
             <div className="bg-white rounded-2xl border border-gray-200 p-3.5 flex items-center gap-3">
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-                style={{
-                  backgroundColor: getAvatarColors(form.pelanggan.nama_pelanggan + form.pelanggan.id).bg,
-                  color: getAvatarColors(form.pelanggan.nama_pelanggan + form.pelanggan.id).text,
-                }}
-              >
-                {getInitials(form.pelanggan.nama_pelanggan)}
-              </div>
+              <Avatar name={form.pelanggan.nama_pelanggan} seedId={form.pelanggan.id} size="md" />
               <div className="min-w-0">
                 <p className="text-[11px] text-gray-400 font-medium">Pelanggan Terpilih</p>
                 <p className="text-sm font-bold text-gray-800 leading-tight truncate">
@@ -719,9 +367,7 @@ export default function TambahOrderClient({
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, jenis_order: opt.value }))}
                   className={`w-full text-left flex items-center gap-4 p-4 rounded-2xl border-2 relative overflow-hidden transition-all cursor-pointer ${
-                    isSelected
-                      ? "border-[#6B8F71] bg-white"
-                      : "border-gray-200 bg-white hover:border-gray-300"
+                    isSelected ? "border-[#6B8F71] bg-white" : "border-gray-200 bg-white hover:border-gray-300"
                   }`}
                 >
                   {isSelected && (
@@ -730,32 +376,20 @@ export default function TambahOrderClient({
                       style={{ height: "80%" }}
                     />
                   )}
-
-                  <div
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                      isSelected
-                        ? "bg-[#6B8F71] border-[#6B8F71]"
-                        : "border-[#D8E4F3] bg-white"
-                    }`}
-                  >
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                    isSelected ? "bg-[#6B8F71] border-[#6B8F71]" : "border-[#D8E4F3] bg-white"
+                  }`}>
                     {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
                   </div>
-
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       {opt.icon}
-                      <span
-                        className={`text-base font-bold ${
-                          isSelected ? "text-gray-800" : "text-gray-700"
-                        }`}
-                      >
+                      <span className={`text-base font-bold ${isSelected ? "text-gray-800" : "text-gray-700"}`}>
                         {opt.value}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 leading-snug">{opt.desc}</p>
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      cth: {opt.contoh}
-                    </p>
+                    <p className="text-[11px] text-gray-400 mt-1">cth: {opt.contoh}</p>
                   </div>
                 </button>
               );
@@ -764,10 +398,11 @@ export default function TambahOrderClient({
         </div>
       )}
 
+      {/* ── Step 3: Daftar Barang ── */}
       {step === 3 && (
         <div className="flex flex-col gap-3">
           {form.items.map((item, idx) => (
-            <ItemCard
+            <ItemOrderCard
               key={item.id}
               item={item}
               index={idx}
@@ -791,7 +426,7 @@ export default function TambahOrderClient({
 
           <button
             type="button"
-            onClick={() => setForm((f) => ({ ...f, items: [...f.items, newItem()] }))}
+            onClick={() => setForm((f) => ({ ...f, items: [...f.items, createNewItem()] }))}
             className="w-full min-h-[44px] rounded-xl bg-[#EDF4FF] text-[#6B8F71] text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 hover:bg-[#D0E4FF]"
           >
             <Plus className="w-4 h-4 text-[#6B8F71]" />
@@ -810,23 +445,18 @@ export default function TambahOrderClient({
         </div>
       )}
 
+      {/* ── Step 4: Tanggal & Pembayaran ── */}
       {step === 4 && (
         <div className="flex flex-col gap-3.5">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-400" />
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                Tanggal Masuk
-              </span>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tanggal Masuk</span>
             </div>
             <div className="p-3.5 rounded-xl bg-[#EDF4FF] border border-[#DEE9F8] flex items-center justify-between">
               <div>
-                <p className="text-base font-bold text-gray-800">
-                  {formatDateIndo(getTodayStr())}
-                </p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  Sudah terisi otomatis
-                </p>
+                <p className="text-base font-bold text-gray-800">{formatDateIndo(getTodayStr())}</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">Sudah terisi otomatis</p>
               </div>
               <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/80 border border-[#D8E4F3] text-gray-600 font-medium shrink-0">
                 Otomatis
@@ -838,22 +468,17 @@ export default function TambahOrderClient({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-[#B37402]" />
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                  Target Selesai (Deadline)
-                </span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Target Selesai (Deadline)</span>
               </div>
-              <span className="text-xs font-bold text-red-500">
-                Wajib
-              </span>
+              <span className="text-xs font-bold text-red-500">Wajib</span>
             </div>
 
             <input
+              id="tanggal-deadline"
               type="date"
               min={getTodayStr()}
               value={form.tanggal_deadline}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, tanggal_deadline: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, tanggal_deadline: e.target.value }))}
               className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors cursor-pointer"
             />
 
@@ -870,11 +495,7 @@ export default function TambahOrderClient({
                     <Hourglass className="w-4 h-4 text-[#00210C] shrink-0" />
                     <span>
                       Sisa waktu pengerjaan:{" "}
-                      {sisaHari === 0
-                        ? "Hari ini"
-                        : sisaHari < 0
-                        ? "Sudah lewat"
-                        : `${sisaHari} hari`}
+                      {sisaHari === 0 ? "Hari ini" : sisaHari < 0 ? "Sudah lewat" : `${sisaHari} hari`}
                     </span>
                   </div>
                 )}
@@ -886,9 +507,7 @@ export default function TambahOrderClient({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-[#6B8F71]" />
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                  Total Biaya Jahit
-                </span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total Biaya Jahit</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#6B8F71]">
                 <Pencil className="w-3.5 h-3.5" />
@@ -901,26 +520,23 @@ export default function TambahOrderClient({
                 Rp
               </span>
               <input
+                id="total-harga"
                 type="number"
                 inputMode="numeric"
                 min={0}
                 value={form.total_harga_str}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, total_harga_str: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, total_harga_str: e.target.value }))}
                 placeholder={String(calcTotal)}
                 className="w-full min-h-[52px] pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-[#EDF4FF] text-lg font-bold text-gray-800 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
               />
             </div>
             <p className="text-[11px] text-gray-400">
-              Dihitung dari total barang ({formatRupiah(calcTotal)}). Dapat diedit atau disesuaikan jika ada biaya tambahan atau diskon.
+              Dihitung dari total barang ({formatRupiah(calcTotal)}). Dapat diedit bila ada biaya tambahan atau diskon.
             </p>
             {form.total_harga_str && parseInt(form.total_harga_str) !== calcTotal && (
               <button
                 type="button"
-                onClick={() =>
-                  setForm((f) => ({ ...f, total_harga_str: String(calcTotal) }))
-                }
+                onClick={() => setForm((f) => ({ ...f, total_harga_str: String(calcTotal) }))}
                 className="text-[11px] text-[#6B8F71] font-semibold text-left hover:underline cursor-pointer"
               >
                 ↩ Kembalikan ke {formatRupiah(calcTotal)}
@@ -930,35 +546,18 @@ export default function TambahOrderClient({
         </div>
       )}
 
+      {/* ── Step 5: Ringkasan & Catatan ── */}
       {step === 5 && (
         <div className="flex flex-col gap-3.5">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col gap-3">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-              Ringkasan Pesanan
-            </p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Ringkasan Pesanan</p>
 
             {form.pelanggan && (
               <div className="p-3.5 rounded-xl bg-[#EDF4FF] border border-[#DEE9F8] flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-                  style={{
-                    backgroundColor: getAvatarColors(
-                      form.pelanggan.nama_pelanggan + form.pelanggan.id
-                    ).bg,
-                    color: getAvatarColors(
-                      form.pelanggan.nama_pelanggan + form.pelanggan.id
-                    ).text,
-                  }}
-                >
-                  {getInitials(form.pelanggan.nama_pelanggan)}
-                </div>
+                <Avatar name={form.pelanggan.nama_pelanggan} seedId={form.pelanggan.id} size="md" />
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-[#6B8F71] uppercase tracking-wide">
-                    Pelanggan
-                  </p>
-                  <p className="text-sm font-bold text-gray-800 truncate">
-                    {form.pelanggan.nama_pelanggan}
-                  </p>
+                  <p className="text-[11px] font-semibold text-[#6B8F71] uppercase tracking-wide">Pelanggan</p>
+                  <p className="text-sm font-bold text-gray-800 truncate">{form.pelanggan.nama_pelanggan}</p>
                   <p className="text-xs text-gray-500">{form.pelanggan.no_hp}</p>
                 </div>
               </div>
@@ -972,9 +571,7 @@ export default function TambahOrderClient({
                     {form.jenis_order}
                   </span>
                 </div>
-                <span className="text-xs font-medium text-gray-500">
-                  {form.items.length} Barang
-                </span>
+                <span className="text-xs font-medium text-gray-500">{form.items.length} Barang</span>
               </div>
 
               <div className="flex flex-col gap-2">
@@ -986,9 +583,7 @@ export default function TambahOrderClient({
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>
-                        <p className="font-semibold text-gray-800 truncate">
-                          {item.nama_item}
-                        </p>
+                        <p className="font-semibold text-gray-800 truncate">{item.nama_item}</p>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
                         <span>{item.jumlah}× {formatRupiah(item.harga_item)}</span>
@@ -999,14 +594,10 @@ export default function TambahOrderClient({
                         )}
                       </div>
                       {item.ukuran_sumber === "lain" && item.ukuran_untuk && (
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          Ukuran: {item.ukuran_untuk}
-                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Ukuran: {item.ukuran_untuk}</p>
                       )}
                       {item.ukuran_sumber === "pelanggan" && (
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          Ukuran: Data Pelanggan
-                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Ukuran: Data Pelanggan</p>
                       )}
                     </div>
                     <span className="font-bold text-gray-800 text-sm shrink-0">
@@ -1019,18 +610,13 @@ export default function TambahOrderClient({
 
             <div className="p-3.5 rounded-xl bg-[#EDF4FF] border border-[#DEE9F8] grid grid-cols-2 gap-3 items-center">
               <div>
-                <p className="text-xs font-bold text-[#121D27]">
-                  Tanggal Deadline
-                </p>
+                <p className="text-xs font-bold text-[#121D27]">Tanggal Deadline</p>
                 <p className="text-sm sm:text-base font-extrabold text-red-600 mt-0.5">
                   {formatDateIndo(form.tanggal_deadline)}
                 </p>
               </div>
-
               <div className="text-right">
-                <p className="text-xs font-bold text-gray-500">
-                  Total Biaya
-                </p>
+                <p className="text-xs font-bold text-gray-500">Total Biaya</p>
                 <p className="text-base sm:text-lg font-extrabold text-[#6B8F71] mt-0.5">
                   {formatRupiah(getFinalTotal())}
                 </p>
@@ -1041,16 +627,13 @@ export default function TambahOrderClient({
           <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-gray-400" />
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                Catatan Tambahan
-              </p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Catatan Tambahan</p>
             </div>
             <textarea
+              id="catatan-model"
               rows={4}
               value={form.catatan_model}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, catatan_model: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, catatan_model: e.target.value }))}
               placeholder="cth: Model A-line, kerah V, ada kantong samping, warna biru dongker"
               className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none"
             />
@@ -1058,6 +641,7 @@ export default function TambahOrderClient({
         </div>
       )}
 
+      {/* Navigation buttons */}
       <div className="flex gap-3 pt-1">
         {step > 1 && (
           <button
@@ -1088,42 +672,26 @@ export default function TambahOrderClient({
             className="flex-1 min-h-[48px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-semibold text-sm shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Menyimpan...</span>
-              </>
+              <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyimpan...</span></>
             ) : (
-              <>
-                <Check className="w-4 h-4" />
-                <span>Simpan Order</span>
-              </>
+              <><Check className="w-4 h-4" /><span>Simpan Order</span></>
             )}
           </button>
         )}
       </div>
 
       {step === 1 && !canNext[1] && (
-        <p className="text-xs text-center text-gray-400">
-          Pilih pelanggan untuk melanjutkan
-        </p>
+        <p className="text-xs text-center text-gray-400">Pilih pelanggan untuk melanjutkan</p>
       )}
       {step === 3 && !canNext[3] && (
-        <p className="text-xs text-center text-gray-400">
-          Isi nama dan harga semua barang untuk melanjutkan
-        </p>
+        <p className="text-xs text-center text-gray-400">Isi nama dan harga semua barang untuk melanjutkan</p>
       )}
       {step === 4 && !form.tanggal_deadline && (
-        <p className="text-xs text-center text-gray-400">
-          Pilih tanggal target selesai untuk melanjutkan
-        </p>
+        <p className="text-xs text-center text-gray-400">Pilih tanggal target selesai untuk melanjutkan</p>
       )}
-      {step === 4 &&
-        form.tanggal_deadline &&
-        form.tanggal_deadline < getTodayStr() && (
-          <p className="text-xs text-center text-amber-500">
-            Target selesai tidak boleh sebelum hari ini
-          </p>
-        )}
+      {step === 4 && form.tanggal_deadline && form.tanggal_deadline < getTodayStr() && (
+        <p className="text-xs text-center text-amber-500">Target selesai tidak boleh sebelum hari ini</p>
+      )}
     </div>
   );
 }

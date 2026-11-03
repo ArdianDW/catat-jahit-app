@@ -1,28 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useDeferredValue } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Clock,
-  Scissors,
-  CheckCircle2,
-  PackageCheck,
   ArrowRight,
   Loader2,
   AlertCircle,
   X,
-  Check,
-  CreditCard,
-  Banknote,
-  Calendar,
   Filter,
   ShoppingBag,
   Search,
-  ChevronRight,
+  PackageCheck,
 } from "lucide-react";
 import type { OrderItem, StatusOrder } from "@/lib/data";
 import { advanceOrderStatus } from "@/lib/actions/order";
+import { formatRupiah, formatDeadline } from "@/lib/utils/format";
+import { getAvatarColors, getInitials } from "@/lib/utils/avatar";
+import StatusBadge from "@/components/ui/StatusBadge";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const FILTER_TABS: { label: string; value: StatusOrder | "Semua" }[] = [
   { label: "Semua", value: "Semua" },
@@ -32,136 +28,8 @@ const FILTER_TABS: { label: string; value: StatusOrder | "Semua" }[] = [
   { label: "Diambil", value: "Diambil" },
 ];
 
-const AVATAR_PALETTES = [
-  { bg: "#DCF8C6", text: "#075E54" },
-  { bg: "#D0E4FF", text: "#004881" },
-  { bg: "#FFE0B2", text: "#E65100" },
-  { bg: "#FCE4EC", text: "#C2185B" },
-  { bg: "#E8EAF6", text: "#283593" },
-  { bg: "#E0F2F1", text: "#00695C" },
-];
-
-function getAvatarColors(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff;
-  }
-  const idx = Math.abs(hash) % AVATAR_PALETTES.length;
-  return AVATAR_PALETTES[idx];
-}
-
-function getInitials(name?: string | null): string {
-  if (!name || !name.trim()) return "??";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-function formatDeadline(deadlineStr: string) {
-  if (!deadlineStr) return { label: "-", sisa: "-", urgent: false };
-  const [year, month, day] = deadlineStr.slice(0, 10).split("-").map(Number);
-  const deadlineDate = new Date(year, month - 1, day);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffMs = deadlineDate.getTime() - today.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-  const MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-  const label = `${day} ${MONTHS[month - 1]} ${year}`;
-
-  let sisa = "";
-  let urgent = false;
-  if (diffDays < 0) { sisa = `Lewat ${Math.abs(diffDays)} hari`; urgent = true; }
-  else if (diffDays === 0) { sisa = "Hari ini"; urgent = true; }
-  else if (diffDays === 1) { sisa = "Besok"; urgent = true; }
-  else if (diffDays <= 3) { sisa = `${diffDays} hari lagi`; urgent = true; }
-  else { sisa = `${diffDays} hari lagi`; }
-
-  return { label, sisa, urgent };
-}
-
-function formatRupiah(n: number) {
-  return "Rp " + n.toLocaleString("id-ID");
-}
-
-function StatusBadge({ status }: { status: StatusOrder }) {
-  const map: Record<StatusOrder, { icon: React.ReactNode; label: string; cls: string }> = {
-    Antri: { icon: <Clock className="w-3.5 h-3.5" />, label: "Antri", cls: "bg-[#BA1A1A] text-white" },
-    Dikerjakan: { icon: <Scissors className="w-3.5 h-3.5" />, label: "Dikerjakan", cls: "bg-[#424842] text-white" },
-    Selesai: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, label: "Selesai", cls: "bg-[#465F86] text-white" },
-    Diambil: { icon: <PackageCheck className="w-3.5 h-3.5" />, label: "Diambil", cls: "bg-[#6B8F71] text-white" },
-  };
-  const item = map[status] || { icon: null, label: status, cls: "bg-[#BA1A1A] text-white" };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-2xs ${item.cls}`}>
-      {item.icon}{item.label}
-    </span>
-  );
-}
-
 interface OrderClientProps {
   initialOrders: OrderItem[];
-}
-
-function KonfirmasiDiambilDialog({
-  order,
-  onConfirm,
-  onCancel,
-  isLoading,
-}: {
-  order: OrderItem;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-        onClick={onCancel}
-      />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 flex flex-col gap-4 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#E8EFEA] flex items-center justify-center shrink-0">
-            <PackageCheck className="w-5 h-5 text-[#6B8F71]" />
-          </div>
-          <div>
-            <p className="font-bold text-gray-800 text-sm">Pesanan Sudah Diambil?</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {order.nomor_order} · {order.pelanggan?.nama_pelanggan ?? "?"}
-            </p>
-          </div>
-        </div>
-
-        <p className="text-sm text-gray-600 leading-relaxed">
-          Status akan berubah menjadi <span className="font-bold text-[#6B8F71]">Diambil</span> dan tidak bisa dikembalikan. Yakin pesanan ini sudah diambil pelanggan?
-        </p>
-
-        <div className="flex gap-2.5 mt-1">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isLoading}
-            className="flex-1 min-h-[44px] rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer select-none disabled:opacity-50"
-          >
-            Belum
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="flex-1 min-h-[44px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer select-none disabled:opacity-50"
-          >
-            {isLoading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyimpan...</span></>
-            ) : (
-              <><Check className="w-4 h-4" /><span>Ya, Sudah Diambil</span></>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function OrderClient({ initialOrders }: OrderClientProps) {
@@ -169,6 +37,7 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
   const [orders, setOrders] = useState<OrderItem[]>(initialOrders);
   const [activeFilter, setActiveFilter] = useState<StatusOrder | "Semua">("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearch = useDeferredValue(searchQuery);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [confirmOrder, setConfirmOrder] = useState<OrderItem | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -176,8 +45,8 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
 
   const filtered = orders.filter((o) => {
     if (activeFilter !== "Semua" && o.status !== activeFilter) return false;
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().trim();
+    if (!deferredSearch.trim()) return true;
+    const q = deferredSearch.toLowerCase().trim();
     const matchNomor = o.nomor_order.toLowerCase().includes(q);
     const matchNama = (o.pelanggan?.nama_pelanggan || "").toLowerCase().includes(q);
     const matchItem = (o.item_order || []).some((it) => it.nama_item.toLowerCase().includes(q));
@@ -246,14 +115,19 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
 
   return (
     <>
-      {confirmOrder && (
-        <KonfirmasiDiambilDialog
-          order={confirmOrder}
-          onConfirm={handleConfirmDiambil}
-          onCancel={() => setConfirmOrder(null)}
-          isLoading={updatingId === confirmOrder.id}
-        />
-      )}
+      <ConfirmDialog
+        isOpen={!!confirmOrder}
+        title="Pesanan Sudah Diambil?"
+        subtitle={confirmOrder ? `${confirmOrder.nomor_order} · ${confirmOrder.pelanggan?.nama_pelanggan ?? "?"}` : ""}
+        description="Status akan berubah menjadi Diambil dan tidak bisa dikembalikan. Yakin pesanan ini sudah diambil pelanggan?"
+        confirmLabel="Ya, Sudah Diambil"
+        confirmColor="#6B8F71"
+        confirmHoverColor="#5a7b5f"
+        onConfirm={handleConfirmDiambil}
+        onCancel={() => setConfirmOrder(null)}
+        isLoading={confirmOrder ? updatingId === confirmOrder.id : false}
+        position="bottom"
+      />
 
       <div className="flex flex-col gap-4">
         <section className="flex flex-col gap-1">
@@ -265,6 +139,7 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
           <input
+            id="order-search"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -329,7 +204,7 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
             </div>
             <p className="text-sm font-bold text-gray-700">
               {searchQuery
-                ? `Tidak ditemukan untuk "${searchQuery}"`
+                ? `Tidak ditemukan untuk "${deferredSearch}"`
                 : activeFilter === "Semua"
                 ? "Belum ada order"
                 : `Tidak ada order "${activeFilter}"`}
@@ -346,9 +221,9 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
           <div className="flex flex-col gap-3">
             {filtered.map((order) => {
               const customerName = order.pelanggan?.nama_pelanggan ?? "Pelanggan";
+              const avatarColors = getAvatarColors(customerName + order.id);
               const initials = getInitials(customerName);
-              const avatarColor = getAvatarColors(customerName + order.id);
-              const { label: deadlineLabel, sisa, urgent } = formatDeadline(order.tanggal_deadline);
+              const deadline = formatDeadline(order.tanggal_deadline);
               const isUpdating = updatingId === order.id;
               const nextLabel: Record<StatusOrder, string | null> = {
                 Antri: "Dikerjakan",
@@ -366,7 +241,7 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
+                      style={{ backgroundColor: avatarColors.bg, color: avatarColors.text }}
                       className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm shrink-0 select-none shadow-2xs"
                     >
                       {initials}
@@ -377,8 +252,12 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
                         <p className="text-sm font-bold text-gray-800 truncate group-hover:text-[#6B8F71] transition-colors">
                           {customerName}
                         </p>
-                        <span className={`text-xs font-bold shrink-0 ${urgent ? "text-[#BA1A1A]" : "text-[#465F86]"}`}>
-                          {sisa}
+                        <span className={`text-xs font-bold shrink-0 ${
+                          deadline.status === "lewat" || deadline.status === "hari-h" || deadline.status === "mendesak"
+                            ? "text-[#BA1A1A]"
+                            : "text-[#465F86]"
+                        }`}>
+                          {deadline.label}
                         </span>
                       </div>
 
@@ -391,9 +270,16 @@ export default function OrderClient({ initialOrders }: OrderClientProps) {
                       <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium mt-0.5">
                         <span>{order.nomor_order}</span>
                         <span>•</span>
-                        <span>{deadlineLabel}</span>
+                        <span>{order.tanggal_deadline.slice(0, 10).split("-").reverse().join(" ")}</span>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between px-1">
+                    <StatusBadge status={order.status} size="sm" />
+                    <span className="text-sm font-bold text-gray-800">
+                      {formatRupiah(order.total_harga)}
+                    </span>
                   </div>
 
                   <div className="flex flex-col gap-1.5 pt-1">

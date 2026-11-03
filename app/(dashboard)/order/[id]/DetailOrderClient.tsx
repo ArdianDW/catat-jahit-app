@@ -3,66 +3,29 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Clock,
-  Scissors,
-  CheckCircle2,
-  PackageCheck,
   ArrowRight,
   Loader2,
   AlertCircle,
   Phone,
   MessageCircle,
-  Ruler,
   FileText,
   ShoppingBag,
-  Check,
   X,
   History,
-  ChevronRight,
   Pencil,
-  Calendar,
-  Wallet,
+  PackageCheck,
+  Ruler,
+  ChevronRight,
 } from "lucide-react";
 import type { OrderDetail, StatusOrder } from "@/lib/data";
 import { advanceOrderStatus } from "@/lib/actions/order";
-
-const AVATAR_PALETTES = [
-  { bg: "#DCF8C6", text: "#075E54" },
-  { bg: "#D0E4FF", text: "#004881" },
-  { bg: "#FFE0B2", text: "#E65100" },
-  { bg: "#FCE4EC", text: "#C2185B" },
-  { bg: "#E8EAF6", text: "#283593" },
-  { bg: "#E0F2F1", text: "#00695C" },
-];
-
-function getAvatarColors(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff;
-  }
-  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
-}
-
-function getInitials(name?: string | null): string {
-  if (!name || !name.trim()) return "??";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-function formatRupiah(amount: number) {
-  return "Rp " + amount.toLocaleString("id-ID");
-}
-
-function formatDateIndo(dateStr: string) {
-  if (!dateStr) return "-";
-  const [year, month, day] = dateStr.slice(0, 10).split("-").map(Number);
-  const MONTHS = [
-    "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-    "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
-  ];
-  return `${day} ${MONTHS[month - 1]} ${year}`;
-}
+import { formatRupiah, formatDateIndo } from "@/lib/utils/format";
+import { formatWhatsAppUrl, formatTelUrl } from "@/lib/utils/phone";
+import Avatar from "@/components/ui/Avatar";
+import StatusBadge from "@/components/ui/StatusBadge";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import MeasurementTableView from "@/components/order/MeasurementTableView";
+import { PackageCheck as PackageCheckIcon } from "lucide-react";
 
 function formatDateTimeIndo(dateTimeStr: string) {
   if (!dateTimeStr) return "-";
@@ -83,122 +46,16 @@ function formatDeadlineStatus(deadlineStr: string) {
   if (!deadlineStr) return { sisa: "-", urgent: false };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const [y, m, d] = deadlineStr.slice(0, 10).split("-").map(Number);
   const target = new Date(y, m - 1, d);
   target.setHours(0, 0, 0, 0);
-
-  const diffMs = target.getTime() - today.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return { sisa: `Lewat ${Math.abs(diffDays)} hari`, urgent: true };
   if (diffDays === 0) return { sisa: "Hari ini", urgent: true };
   if (diffDays === 1) return { sisa: "Besok", urgent: true };
   if (diffDays <= 3) return { sisa: `${diffDays} hari lagi`, urgent: true };
   return { sisa: `${diffDays} hari lagi`, urgent: false };
 }
-
-function StatusBadge({ status }: { status: StatusOrder }) {
-  switch (status) {
-    case "Antri":
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-[#BA1A1A] text-white shadow-2xs">
-          <Clock className="w-3.5 h-3.5 text-white" />
-          <span>Antri</span>
-        </span>
-      );
-    case "Dikerjakan":
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-[#424842] text-white shadow-2xs">
-          <Scissors className="w-3.5 h-3.5 text-white" />
-          <span>Dikerjakan</span>
-        </span>
-      );
-    case "Selesai":
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-[#465F86] text-white shadow-2xs">
-          <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-          <span>Selesai</span>
-        </span>
-      );
-    case "Diambil":
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-[#6B8F71] text-white shadow-2xs">
-          <PackageCheck className="w-3.5 h-3.5 text-white" />
-          <span>Diambil</span>
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-[#BA1A1A] text-white shadow-2xs">
-          <span>{status}</span>
-        </span>
-      );
-  }
-}
-
-function KonfirmasiDiambilDialog({
-  nomorOrder,
-  namaPelanggan,
-  onConfirm,
-  onCancel,
-  isLoading,
-}: {
-  nomorOrder: string;
-  namaPelanggan: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 flex flex-col gap-4 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#E8EFEA] flex items-center justify-center shrink-0">
-            <PackageCheck className="w-5 h-5 text-[#6B8F71]" />
-          </div>
-          <div>
-            <p className="font-bold text-gray-800 text-sm">Pesanan Sudah Diambil?</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {nomorOrder} · {namaPelanggan}
-            </p>
-          </div>
-        </div>
-
-        <p className="text-sm text-gray-600 leading-relaxed">
-          Status akan diubah menjadi <span className="font-bold text-[#6B8F71]">Diambil</span>.
-          Setelah diambil, status pesanan tidak dapat diubah kembali.
-        </p>
-
-        <div className="flex gap-2.5 mt-1">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isLoading}
-            className="flex-1 min-h-[44px] rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-          >
-            Belum
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="flex-1 min-h-[44px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {isLoading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyimpan...</span></>
-            ) : (
-              <><Check className="w-4 h-4" /><span>Ya, Sudah Diambil</span></>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 
 type MeasurementItem = {
   nama_item: string;
@@ -219,16 +76,6 @@ function UkuranBadanModal({
   item: MeasurementItem;
   onClose: () => void;
 }) {
-  const measurements = [
-    { label: "Lingkar Dada", value: item.lingkar_dada },
-    { label: "Lingkar Pinggang", value: item.lingkar_pinggang },
-    { label: "Lingkar Pinggul", value: item.lingkar_pinggul },
-    { label: "Panjang Bahu", value: item.panjang_bahu },
-    { label: "Panjang Lengan", value: item.panjang_lengan },
-    { label: "Panjang Baju", value: item.panjang_baju },
-    { label: "Panjang Celana", value: item.panjang_celana },
-  ].filter((m) => m.value);
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
@@ -236,7 +83,7 @@ function UkuranBadanModal({
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#EFF3EE] flex items-center justify-center shrink-0">
-              <Ruler className="w-4.5 h-4.5 text-[#6D726D]" />
+              <Ruler className="w-4 h-4 text-[#6D726D]" />
             </div>
             <div>
               <p className="font-bold text-gray-800 text-sm leading-tight">Ukuran Badan</p>
@@ -252,27 +99,13 @@ function UkuranBadanModal({
           </button>
         </div>
 
-        <div className="px-5 py-4 flex flex-col gap-2">
-          {measurements.map(({ label, value }) => (
-            <div
-              key={label}
-              className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0"
-            >
-              <span className="text-sm text-gray-500">{label}</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-xl font-bold text-gray-800">{value}</span>
-                <span className="text-xs font-medium text-gray-400">cm</span>
-              </div>
-            </div>
-          ))}
+        <div className="px-5 py-4">
+          <MeasurementTableView
+            data={item}
+            title=""
+            emptyMessage="Tidak ada ukuran tercatat"
+          />
         </div>
-
-        {item.catatan_ukuran && (
-          <div className="mx-5 mb-4 px-3.5 py-3 rounded-xl bg-amber-50 border border-amber-100">
-            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wide mb-1">Catatan Ukuran</p>
-            <p className="text-sm text-amber-800 italic leading-relaxed">{item.catatan_ukuran}</p>
-          </div>
-        )}
 
         <div className="px-5 pb-5">
           <button
@@ -298,8 +131,6 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
   const [, startTransition] = useTransition();
 
   const customerName = order.pelanggan?.nama_pelanggan || "Pelanggan";
-  const initials = getInitials(customerName);
-  const avatarColor = getAvatarColors(customerName + order.id);
   const deadlineInfo = formatDeadlineStatus(order.tanggal_deadline);
 
   const nextStatusMap: Record<StatusOrder, StatusOrder | null> = {
@@ -323,7 +154,7 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
     setIsUpdating(true);
     setErrorMessage(null);
 
-    const previousStatus = order.status;
+    const previousOrder = order;
     setOrder((prev) => ({
       ...prev,
       status: nextStatus,
@@ -344,7 +175,7 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
 
     if (!res.success) {
       setErrorMessage(res.error || "Gagal mengubah status pesanan");
-      setOrder(initialOrder);
+      setOrder(previousOrder);
       return;
     }
 
@@ -353,23 +184,27 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
     });
   };
 
-  const cleanPhone = (order.pelanggan?.no_hp || "").replace(/\D/g, "");
-  const waNumber = cleanPhone.startsWith("0") ? "62" + cleanPhone.slice(1) : cleanPhone;
+  const waUrl = formatWhatsAppUrl(order.pelanggan?.no_hp || "");
+  const telUrl = formatTelUrl(order.pelanggan?.no_hp || "");
 
   return (
     <>
-      {showConfirmModal && (
-        <KonfirmasiDiambilDialog
-          nomorOrder={order.nomor_order}
-          namaPelanggan={customerName}
-          onConfirm={async () => {
-            setShowConfirmModal(false);
-            await doAdvance();
-          }}
-          onCancel={() => setShowConfirmModal(false)}
-          isLoading={isUpdating}
-        />
-      )}
+      <ConfirmDialog
+        isOpen={showConfirmModal}
+        title="Pesanan Sudah Diambil?"
+        subtitle={`${order.nomor_order} · ${customerName}`}
+        description="Status akan diubah menjadi Diambil. Setelah diambil, status pesanan tidak dapat diubah kembali."
+        confirmLabel="Ya, Sudah Diambil"
+        confirmColor="#6B8F71"
+        confirmHoverColor="#5a7b5f"
+        onConfirm={async () => {
+          setShowConfirmModal(false);
+          await doAdvance();
+        }}
+        onCancel={() => setShowConfirmModal(false)}
+        isLoading={isUpdating}
+        position="center"
+      />
 
       {selectedMeasurementItem && (
         <UkuranBadanModal
@@ -377,8 +212,6 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
           onClose={() => setSelectedMeasurementItem(null)}
         />
       )}
-
-
 
       <div className="flex flex-col gap-4 pb-20">
         {errorMessage && (
@@ -412,17 +245,9 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
 
           <div className="bg-[#EDF4FF] rounded-xl p-3.5 flex flex-col gap-3 border border-[#D0E4FF]/60">
             <div className="flex items-center gap-3">
-              <div
-                style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
-                className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm shrink-0 select-none shadow-2xs"
-              >
-                {initials}
-              </div>
-
+              <Avatar name={customerName} seedId={order.id} size="md" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">
-                  {customerName}
-                </p>
+                <p className="text-sm font-bold text-gray-900 truncate">{customerName}</p>
                 <p className="text-xs font-medium text-gray-600 mt-0.5">
                   {order.pelanggan?.no_hp || "-"}
                 </p>
@@ -432,7 +257,7 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
             {order.pelanggan?.no_hp ? (
               <div className="flex gap-2 pt-0.5">
                 <a
-                  href={`https://wa.me/${waNumber}`}
+                  href={waUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="flex-1 min-h-[40px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.98]"
@@ -441,7 +266,7 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
                   <span>Kirim WhatsApp</span>
                 </a>
                 <a
-                  href={`tel:${order.pelanggan.no_hp}`}
+                  href={telUrl}
                   className="min-w-[48px] px-3.5 min-h-[40px] rounded-xl bg-[#465F86] hover:bg-[#384c6c] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.98]"
                 >
                   <Phone className="w-4 h-4 text-white" />
@@ -462,18 +287,14 @@ export default function DetailOrderClient({ initialOrder }: { initialOrder: Orde
 
           <div className="grid grid-cols-2 gap-2.5">
             <div className="bg-[#EDF4FF] rounded-xl p-3 flex flex-col justify-center border border-[#D0E4FF]/60 text-[#121D27]">
-              <span className="text-[11px] font-semibold opacity-75">
-                Tanggal Masuk
-              </span>
+              <span className="text-[11px] font-semibold opacity-75">Tanggal Masuk</span>
               <span className="text-xs sm:text-sm font-bold mt-0.5">
                 {formatDateIndo(order.tanggal_masuk)}
               </span>
             </div>
 
             <div className="bg-[#FFDDB5] rounded-xl p-3 flex flex-col justify-center border border-[#F4CCA1]/60 text-[#2A1800]">
-              <span className="text-[11px] font-semibold opacity-75">
-                Target Selesai
-              </span>
+              <span className="text-[11px] font-semibold opacity-75">Target Selesai</span>
               <span className="text-xs sm:text-sm font-bold mt-0.5">
                 {formatDateIndo(order.tanggal_deadline)}
               </span>
