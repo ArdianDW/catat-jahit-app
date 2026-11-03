@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
+import { useState, useTransition, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Search,
   X,
@@ -13,19 +13,17 @@ import {
   Power,
   Plus,
   AlertCircle,
-  CheckCircle2,
   Loader2,
   Sparkles,
 } from "lucide-react";
 import type { LayananItem } from "@/lib/data";
 import { toggleStatusLayanan, seedContohLayanan } from "@/lib/actions/layanan";
+import { formatRupiah } from "@/lib/utils/format";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
 
 interface LayananClientProps {
   initialLayanan: LayananItem[];
-}
-
-function formatRupiah(n: number) {
-  return "Rp " + n.toLocaleString("id-ID");
 }
 
 export default function LayananClient({ initialLayanan }: LayananClientProps) {
@@ -33,6 +31,7 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
   const [layananList, setLayananList] = useState<LayananItem[]>(initialLayanan);
   const [prevInitialLayanan, setPrevInitialLayanan] = useState(initialLayanan);
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearch = useDeferredValue(searchQuery);
   const [categoryFilter, setCategoryFilter] = useState<"Semua" | "Jahit" | "Permak">("Semua");
   const [statusFilter, setStatusFilter] = useState<"Semua" | "Aktif" | "Nonaktif">("Semua");
 
@@ -47,13 +46,6 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3500);
-  };
-
   const counts = {
     semua: layananList.length,
     jahit: layananList.filter((l) => l.jenis === "Jahit").length,
@@ -63,18 +55,16 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
   };
 
   const filtered = layananList.filter((item) => {
-    if (categoryFilter !== "Semua" && item.jenis !== categoryFilter) {
-      return false;
-    }
+    if (categoryFilter !== "Semua" && item.jenis !== categoryFilter) return false;
     if (statusFilter === "Aktif" && !item.aktif) return false;
     if (statusFilter === "Nonaktif" && item.aktif) return false;
-
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().trim();
-    const matchNama = item.nama_layanan.toLowerCase().includes(q);
-    const matchDesc = (item.deskripsi || "").toLowerCase().includes(q);
-    const matchHarga = item.harga_dasar.toString().includes(q);
-    return matchNama || matchDesc || matchHarga;
+    if (!deferredSearch.trim()) return true;
+    const q = deferredSearch.toLowerCase().trim();
+    return (
+      item.nama_layanan.toLowerCase().includes(q) ||
+      (item.deskripsi || "").toLowerCase().includes(q) ||
+      item.harga_dasar.toString().includes(q)
+    );
   });
 
   const handleToggleAktif = async (item: LayananItem) => {
@@ -82,7 +72,6 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
       setConfirmItem(item);
       return;
     }
-
     await executeToggle(item, true);
   };
 
@@ -99,7 +88,7 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
     setConfirmItem(null);
 
     if (result.success) {
-      showToast(
+      setToastMessage(
         targetAktif
           ? `Layanan "${item.nama_layanan}" diaktifkan kembali`
           : `Layanan "${item.nama_layanan}" dinonaktifkan`
@@ -123,7 +112,7 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
       const result = await seedContohLayanan();
       setIsUpdating(false);
       if (result.success) {
-        showToast("Contoh katalog layanan berhasil dimuat!");
+        setToastMessage("Contoh katalog layanan berhasil dimuat!");
         router.refresh();
       } else {
         setErrorMessage(result.error || "Gagal memuat contoh layanan");
@@ -134,17 +123,12 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
   return (
     <div className="flex flex-col gap-4">
       {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm bg-[#2E5A36] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-2 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
-          <span className="flex-1">{toastMessage}</span>
-          <button
-            type="button"
-            onClick={() => setToastMessage(null)}
-            className="p-1 hover:bg-white/20 rounded-md text-white/80"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <Toast
+          message={toastMessage}
+          type="success"
+          onClose={() => setToastMessage(null)}
+          duration={3500}
+        />
       )}
 
       {errorMessage && (
@@ -173,7 +157,7 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
           </span>
         </div>
         <p className="text-xs text-gray-500">
-          Katalog jenis pengerjaan & harga dasar untuk pengisian cepat pesanan
+          Katalog jenis pengerjaan &amp; harga dasar untuk pengisian cepat pesanan
         </p>
       </section>
 
@@ -199,81 +183,55 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setCategoryFilter("Semua")}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer transition-all active:scale-95 ${
-              categoryFilter === "Semua"
-                ? "bg-[#6B8F71] text-white shadow-2xs"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            Semua ({counts.semua})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCategoryFilter("Jahit")}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer transition-all active:scale-95 ${
-              categoryFilter === "Jahit"
-                ? "bg-[#2E5A36] text-white shadow-2xs"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            <Scissors className="w-3.5 h-3.5" />
-            <span>Jahit ({counts.jahit})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCategoryFilter("Permak")}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer transition-all active:scale-95 ${
-              categoryFilter === "Permak"
-                ? "bg-[#1F3A5F] text-white shadow-2xs"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            <Tag className="w-3.5 h-3.5" />
-            <span>Permak ({counts.permak})</span>
-          </button>
+          {(["Semua", "Jahit", "Permak"] as const).map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategoryFilter(cat)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer transition-all active:scale-95 ${
+                categoryFilter === cat
+                  ? cat === "Permak"
+                    ? "bg-[#1F3A5F] text-white shadow-2xs"
+                    : cat === "Jahit"
+                      ? "bg-[#2E5A36] text-white shadow-2xs"
+                      : "bg-[#6B8F71] text-white shadow-2xs"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              {cat === "Jahit" && <Scissors className="w-3.5 h-3.5" />}
+              {cat === "Permak" && <Tag className="w-3.5 h-3.5" />}
+              <span>
+                {cat === "Semua"
+                  ? `Semua (${counts.semua})`
+                  : cat === "Jahit"
+                    ? `Jahit (${counts.jahit})`
+                    : `Permak (${counts.permak})`}
+              </span>
+            </button>
+          ))}
         </div>
 
         {counts.nonaktif > 0 && (
           <div className="flex items-center gap-1.5 text-[11px] text-gray-500 pt-0.5">
             <span className="font-medium text-gray-400">Filter status:</span>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("Semua")}
-              className={`px-2.5 py-0.5 rounded-md cursor-pointer transition-all font-semibold ${
-                statusFilter === "Semua"
-                  ? "bg-gray-700 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              Semua
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("Aktif")}
-              className={`px-2.5 py-0.5 rounded-md cursor-pointer transition-all font-semibold ${
-                statusFilter === "Aktif"
-                  ? "bg-[#6B8F71] text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              Aktif Saja
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("Nonaktif")}
-              className={`px-2.5 py-0.5 rounded-md cursor-pointer transition-all font-semibold ${
-                statusFilter === "Nonaktif"
-                  ? "bg-[#707973] text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              Nonaktif ({counts.nonaktif})
-            </button>
+            {(["Semua", "Aktif", "Nonaktif"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatusFilter(s)}
+                className={`px-2.5 py-0.5 rounded-md cursor-pointer transition-all font-semibold ${
+                  statusFilter === s
+                    ? s === "Aktif"
+                      ? "bg-[#6B8F71] text-white"
+                      : s === "Nonaktif"
+                        ? "bg-[#707973] text-white"
+                        : "bg-gray-700 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {s === "Nonaktif" ? `Nonaktif (${counts.nonaktif})` : s === "Aktif" ? "Aktif Saja" : s}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -332,7 +290,7 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
                 Layanan tidak ditemukan
               </p>
               <p className="text-xs text-gray-400">
-                Tidak ada layanan yang cocok dengan kata kunci & filter yang dipilih.
+                Tidak ada layanan yang cocok dengan kata kunci &amp; filter yang dipilih.
               </p>
             </div>
             <button
@@ -344,7 +302,7 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
               }}
               className="text-xs text-[#6B8F71] font-semibold hover:underline mt-1 cursor-pointer"
             >
-              Reset Pencarian & Filter
+              Reset Pencarian &amp; Filter
             </button>
           </div>
         )
@@ -453,65 +411,22 @@ export default function LayananClient({ initialLayanan }: LayananClientProps) {
         </div>
       )}
 
-      {confirmItem && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            onClick={() => setConfirmItem(null)}
-          />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 flex flex-col gap-4 z-10 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                <PowerOff className="w-5 h-5 text-[#707973]" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">
-                  Nonaktifkan Layanan?
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {confirmItem.nama_layanan}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-600 leading-relaxed">
-              Layanan ini akan disembunyikan dari pilihan saat membuat order baru.
-              <span className="block mt-1 font-medium text-gray-700">
-                Data pada order lama yang sudah tercatat tidak akan rusak atau berubah. Anda dapat mengaktifkannya kembali sewaktu-waktu.
-              </span>
-            </p>
-
-            <div className="flex gap-2.5 mt-1">
-              <button
-                type="button"
-                onClick={() => setConfirmItem(null)}
-                disabled={isUpdating}
-                className="flex-1 min-h-[44px] rounded-xl border border-gray-200 text-gray-600 font-medium text-xs hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => executeToggle(confirmItem, false)}
-                disabled={isUpdating}
-                className="flex-1 min-h-[44px] rounded-xl bg-[#707973] hover:bg-[#5b635e] text-white font-bold text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
-              >
-                {isUpdating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Memproses...</span>
-                  </>
-                ) : (
-                  <>
-                    <PowerOff className="w-4 h-4" />
-                    <span>Ya, Nonaktifkan</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={!!confirmItem}
+        title="Nonaktifkan Layanan?"
+        subtitle={confirmItem?.nama_layanan ?? ""}
+        description="Layanan ini akan disembunyikan dari pilihan saat membuat order baru. Data pada order lama yang sudah tercatat tidak akan rusak atau berubah. Anda dapat mengaktifkannya kembali sewaktu-waktu."
+        confirmLabel="Ya, Nonaktifkan"
+        cancelLabel="Batal"
+        confirmColor="#707973"
+        confirmHoverColor="#5b635e"
+        icon={<PowerOff className="w-5 h-5 text-[#707973]" />}
+        iconBg="#F3F4F6"
+        onConfirm={() => confirmItem && executeToggle(confirmItem, false)}
+        onCancel={() => setConfirmItem(null)}
+        isLoading={isUpdating}
+        position="bottom"
+      />
     </div>
   );
 }

@@ -6,6 +6,27 @@ import { usePathname, useRouter } from "next/navigation";
 import { Home, Scissors, Users, Tag, LogOut, Loader2 } from "lucide-react";
 import NetworkStatusBanner from "@/components/NetworkStatusBanner";
 import { logout } from "@/lib/actions/auth";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+
+const ROUTE_TITLES: { pattern: RegExp | string; title: string }[] = [
+  { pattern: /^\/order\/baru/, title: "Tambah Order" },
+  { pattern: /^\/pelanggan\/baru/, title: "Tambah Pelanggan" },
+  { pattern: /^\/layanan\/baru/, title: "Tambah Layanan" },
+  { pattern: /^\/layanan\/[^/]+\/edit/, title: "Edit Layanan" },
+  { pattern: /^\/pelanggan\/[^/]+\/edit/, title: "Edit Pelanggan" },
+  { pattern: /^\/order\/[^/]+\/edit/, title: "Edit Order" },
+  { pattern: /^\/pelanggan\/[^/]+$/, title: "Profil Pelanggan" },
+  { pattern: /^\/order\/[^/]+$/, title: "Detail Order" },
+];
+
+function getFormTitle(pathname: string): string {
+  for (const { pattern, title } of ROUTE_TITLES) {
+    if (typeof pattern === "string" ? pathname.startsWith(pattern) : pattern.test(pathname)) {
+      return title;
+    }
+  }
+  return "";
+}
 
 export default function DashboardLayout({
   children,
@@ -23,41 +44,8 @@ export default function DashboardLayout({
   const isPelanggan = pathname === "/pelanggan";
   const isLayanan = pathname === "/layanan";
 
-  const isTambahOrder = pathname.startsWith("/order/baru");
-  const isTambahPelanggan = pathname.startsWith("/pelanggan/baru");
-  const isTambahLayanan = pathname.startsWith("/layanan/baru");
-  const isEditPelanggan = /^\/pelanggan\/[^/]+\/edit/.test(pathname);
-  const isEditOrder = /^\/order\/[^/]+\/edit/.test(pathname);
-  const isEditLayanan = /^\/layanan\/[^/]+\/edit/.test(pathname);
-  const isDetailPelanggan = /^\/pelanggan\/[^/]+$/.test(pathname) && !isTambahPelanggan;
-  const isDetailOrder = pathname.startsWith("/order/") && !isTambahOrder && !isEditOrder;
-  const isFormPage =
-    isTambahOrder ||
-    isTambahPelanggan ||
-    isTambahLayanan ||
-    isEditLayanan ||
-    isDetailPelanggan ||
-    isDetailOrder ||
-    isEditPelanggan ||
-    isEditOrder;
-
-  const formTitle = isTambahOrder
-    ? "Tambah Order"
-    : isTambahPelanggan
-      ? "Tambah Pelanggan"
-      : isTambahLayanan
-        ? "Tambah Layanan"
-        : isEditLayanan
-          ? "Edit Layanan"
-          : isEditPelanggan
-            ? "Edit Pelanggan"
-            : isEditOrder
-              ? "Edit Order"
-              : isDetailPelanggan
-                ? "Profil Pelanggan"
-                : isDetailOrder
-                  ? "Detail Order"
-                  : "";
+  const formTitle = getFormTitle(pathname);
+  const isFormPage = !!formTitle;
 
   const singlePageFab = isOrder
     ? { label: "Tambah Order", href: "/order/baru", colorClass: "bg-[#6B8F71] hover:bg-[#5a7b5f]" }
@@ -283,55 +271,22 @@ export default function DashboardLayout({
         })}
       </nav>
 
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            onClick={() => !isLoggingOut && setShowLogoutModal(false)}
-          />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xs p-5 flex flex-col gap-4 z-10 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <LogOut className="w-5 h-5 text-[#BA1A1A]" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm">Keluar dari CatatJahit?</p>
-                <p className="text-xs text-gray-500 mt-0.5">Sesi akun akan diakhiri</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-600 leading-relaxed">
-              Anda harus memasukkan nama pengguna dan kata sandi kembali untuk masuk ke aplikasi.
-            </p>
-
-            <div className="flex gap-2.5 mt-1">
-              <button
-                type="button"
-                onClick={() => setShowLogoutModal(false)}
-                disabled={isLoggingOut}
-                className="flex-1 min-h-[44px] rounded-xl border border-gray-200 text-gray-600 font-medium text-xs hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer select-none disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="flex-1 min-h-[44px] rounded-xl bg-[#BA1A1A] hover:bg-[#9c1515] text-white font-bold text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer select-none disabled:opacity-50"
-              >
-                {isLoggingOut ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Keluar...</span>
-                  </>
-                ) : (
-                  <span>Ya, Keluar</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showLogoutModal}
+        title="Keluar dari CatatJahit?"
+        subtitle="Sesi akun akan diakhiri"
+        description="Anda harus memasukkan nama pengguna dan kata sandi kembali untuk masuk ke aplikasi."
+        confirmLabel="Ya, Keluar"
+        cancelLabel="Batal"
+        confirmColor="#BA1A1A"
+        confirmHoverColor="#9c1515"
+        icon={<LogOut className="w-5 h-5 text-[#BA1A1A]" />}
+        iconBg="#FEE2E2"
+        onConfirm={handleLogout}
+        onCancel={() => !isLoggingOut && setShowLogoutModal(false)}
+        isLoading={isLoggingOut}
+        position="center"
+      />
     </div>
   );
 }
