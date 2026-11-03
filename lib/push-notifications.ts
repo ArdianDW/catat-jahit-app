@@ -68,8 +68,19 @@ export async function sendDeadlineReminderPush(
     timeZone: "Asia/Jakarta",
   }).format(new Date());
 
+  let deadlineDays = 3;
+  const { data: settingData } = await supabase
+    .from("notification_settings")
+    .select("deadline_days")
+    .limit(1)
+    .maybeSingle();
+
+  if (settingData?.deadline_days && typeof settingData.deadline_days === "number") {
+    deadlineDays = settingData.deadline_days;
+  }
+
   const limitDate = new Date();
-  limitDate.setDate(limitDate.getDate() + 3);
+  limitDate.setDate(limitDate.getDate() + deadlineDays);
   const limitStr = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
   }).format(limitDate);
@@ -148,7 +159,7 @@ export async function sendDeadlineReminderPush(
       notifTitle = "⏰ Deadline Besok!";
       notifBody = `Pesanan ${nama} memiliki batas waktu pengerjaan besok.`;
     } else {
-      notifTitle = "🧵 Pengingat Deadline (H-3)";
+      notifTitle = `🧵 Pengingat Deadline (H-${deadlineDays})`;
       notifBody = `Pesanan ${nama} tersisa ${diffDays} hari lagi.`;
     }
   } else if (urgentOrders.length > 1) {
@@ -167,7 +178,7 @@ export async function sendDeadlineReminderPush(
       notifBody = `Ada total ${urgentOrders.length} pesanan mendekati deadline dalam waktu dekat.`;
     } else {
       notifTitle = `🧵 ${urgentOrders.length} Pesanan Mendekati Deadline`;
-      notifBody = `Pengingat pagi: ada ${urgentOrders.length} pesanan yang harus diselesaikan dalam 3 hari ke depan.`;
+      notifBody = `Pengingat pagi: ada ${urgentOrders.length} pesanan yang harus diselesaikan dalam ${deadlineDays} hari ke depan.`;
     }
   } else if (isTest) {
     notifTitle = "🔔 Tes Notifikasi - CatatJahit";

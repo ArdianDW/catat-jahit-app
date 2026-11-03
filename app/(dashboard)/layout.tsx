@@ -3,10 +3,11 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Scissors, Users, Tag, LogOut, Loader2 } from "lucide-react";
+import { Home, Scissors, Users, Tag, LogOut, Settings, Loader2 } from "lucide-react";
 import NetworkStatusBanner from "@/components/NetworkStatusBanner";
 import { logout } from "@/lib/actions/auth";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import SettingsSheet from "@/components/settings/SettingsSheet";
 
 const ROUTE_TITLES: { pattern: RegExp | string; title: string }[] = [
   { pattern: /^\/order\/baru/, title: "Tambah Order" },
@@ -37,6 +38,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [fabOpen, setFabOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [isLoggingOut, startLogoutTransition] = useTransition();
 
   const isBeranda = pathname === "/beranda";
@@ -133,12 +135,12 @@ export default function DashboardLayout({
             {isBeranda && (
               <button
                 type="button"
-                onClick={() => setShowLogoutModal(true)}
-                aria-label="Keluar dari akun"
-                title="Keluar dari akun"
+                onClick={() => setShowSettingsSheet(true)}
+                aria-label="Pengaturan"
+                title="Pengaturan"
                 className="w-10 h-10 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
               >
-                <LogOut className="w-5 h-5" />
+                <Settings className="w-5 h-5" />
               </button>
             )}
           </div>
@@ -270,6 +272,12 @@ export default function DashboardLayout({
           );
         })}
       </nav>
+
+      <SettingsSheet
+        isOpen={showSettingsSheet}
+        onClose={() => setShowSettingsSheet(false)}
+        onLogoutClick={() => setShowLogoutModal(true)}
+      />
 
       <ConfirmDialog
         isOpen={showLogoutModal}
