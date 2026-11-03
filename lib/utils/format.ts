@@ -23,7 +23,10 @@ export function formatRupiah(n: number): string {
   return rupiahFormatter.format(n);
 }
 
-export function formatDateIndo(dateStr: string, variant: "short" | "long" = "short"): string {
+export function formatDateIndo(
+  dateStr: string | null | undefined,
+  variant: "short" | "long" = "short"
+): string {
   if (!dateStr) return "-";
   try {
     const normalized = dateStr.length === 10 ? `${dateStr}T00:00:00` : dateStr;
@@ -37,7 +40,7 @@ export function formatDateIndo(dateStr: string, variant: "short" | "long" = "sho
   }
 }
 
-export function getSisaHari(deadlineStr: string): number | null {
+export function getSisaHari(deadlineStr: string | null | undefined): number | null {
   if (!deadlineStr) return null;
   try {
     const today = new Date();

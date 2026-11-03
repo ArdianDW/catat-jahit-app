@@ -22,6 +22,7 @@ interface ConfirmDialogProps {
   loadingLabel?: string;
 
   position?: "center" | "bottom";
+  errorMessage?: string;
 }
 
 export default function ConfirmDialog({
@@ -40,6 +41,7 @@ export default function ConfirmDialog({
   confirmHoverColor = "#5a7b5f",
   loadingLabel = "Menyimpan...",
   position = "bottom",
+  errorMessage,
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
@@ -86,6 +88,12 @@ export default function ConfirmDialog({
           <p id="confirm-dialog-desc" className="text-sm text-gray-600 leading-relaxed">
             {description}
           </p>
+        )}
+
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+            {errorMessage}
+          </div>
         )}
 
         <div className="flex gap-2.5 mt-1">

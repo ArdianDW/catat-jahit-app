@@ -136,7 +136,7 @@ export default function ProfilPelangganClient({
           )}
         </div>
 
-        <MeasurementTableView measurements={measurements} />
+        <MeasurementTableView data={measurements} />
       </div>
 
       {/* Riwayat Pesanan */}
