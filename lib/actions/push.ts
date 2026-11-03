@@ -1,22 +1,24 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth";
 import { sendWelcomePush, sendDeadlineReminderPush } from "@/lib/push-notifications";
+import { pushSubscriptionSchema } from "@/lib/validations/push";
 
-export interface PushSubscriptionInput {
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
-
-export async function savePushSubscription(sub: PushSubscriptionInput) {
+export async function savePushSubscription(rawInput: unknown) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
+    const user = auth.user;
+
+    const parsed = pushSubscriptionSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data subscription tidak valid." };
+    }
+    const sub = parsed.data;
 
     const { error } = await supabase.from("push_subscriptions").upsert(
       {
@@ -49,7 +51,12 @@ export async function savePushSubscription(sub: PushSubscriptionInput) {
 
 export async function removePushSubscription(endpoint: string) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
+
     await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
     return { success: true };
   } catch (err) {

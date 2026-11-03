@@ -1,12 +1,19 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-
+import { orderSchema, updateOrderSchema } from "@/lib/validations/order";
+import { sanitizeText } from "@/lib/utils/sanitize";
+export type { OrderItemInput as CreateOrderItemInput } from "@/lib/validations/order";
 
 export async function advanceOrderStatus(orderId: string) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
+
     const { data, error } = await supabase.rpc("ubah_status_order", {
       p_order_id: orderId,
     });
@@ -44,46 +51,20 @@ export async function advanceOrderStatus(orderId: string) {
   }
 }
 
-export interface CreateOrderItemInput {
-  layanan_id?: string | null;
-  nama_item: string;
-  jumlah: number;
-  harga_item: number;
-  ukuran_sumber: "pelanggan" | "lain" | "tanpa";
-  ukuran_untuk?: string | null;
-  lingkar_dada?: number | null;
-  lingkar_pinggang?: number | null;
-  lingkar_pinggul?: number | null;
-  panjang_bahu?: number | null;
-  panjang_lengan?: number | null;
-  panjang_baju?: number | null;
-  panjang_celana?: number | null;
-  catatan_ukuran?: string | null;
-}
-
-export interface CreateOrderInput {
-  pelanggan_id: string;
-  jenis_order: "Jahit Baru" | "Permak";
-  tanggal_deadline: string;
-  total_harga: number;
-  status_pembayaran: "Belum Lunas" | "Lunas";
-  catatan_model?: string | null;
-  items: CreateOrderItemInput[];
-}
-
-export async function createOrder(input: CreateOrderInput) {
+export async function createOrder(rawInput: unknown) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
+    }
+    const supabase = auth.supabase;
 
-    if (!input.pelanggan_id) {
-      return { success: false, error: "Pelanggan harus dipilih" };
+    const parsed = orderSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data tidak valid." };
     }
-    if (!input.items || input.items.length === 0) {
-      return { success: false, error: "Minimal 1 barang harus dimasukkan" };
-    }
-    if (!input.tanggal_deadline) {
-      return { success: false, error: "Tanggal deadline harus diisi" };
-    }
+    const input = parsed.data;
 
     const { data: orderData, error: orderError } = await supabase
       .from("orders")
@@ -94,7 +75,7 @@ export async function createOrder(input: CreateOrderInput) {
         total_harga: input.total_harga,
         status: "Antri",
         status_pembayaran: input.status_pembayaran,
-        catatan_model: input.catatan_model?.trim() || null,
+        catatan_model: input.catatan_model ? sanitizeText(input.catatan_model) : null,
       })
       .select("id, nomor_order")
       .single();
@@ -107,9 +88,9 @@ export async function createOrder(input: CreateOrderInput) {
     const itemsToInsert = input.items.map((item) => ({
       order_id: orderData.id,
       layanan_id: item.layanan_id || null,
-      nama_item: item.nama_item.trim(),
-      jumlah: Math.max(1, item.jumlah),
-      harga_item: Math.max(0, item.harga_item),
+      nama_item: sanitizeText(item.nama_item),
+      jumlah: item.jumlah,
+      harga_item: item.harga_item,
       ukuran_sumber: item.ukuran_sumber,
       ukuran_untuk:
         item.ukuran_sumber === "lain" ? item.ukuran_untuk?.trim() || null : null,
@@ -128,7 +109,11 @@ export async function createOrder(input: CreateOrderInput) {
       panjang_celana:
         item.ukuran_sumber === "lain" ? item.panjang_celana || null : null,
       catatan_ukuran:
-        item.ukuran_sumber === "lain" ? item.catatan_ukuran?.trim() || null : null,
+        item.ukuran_sumber === "lain"
+          ? item.catatan_ukuran
+            ? sanitizeText(item.catatan_ukuran)
+            : null
+          : null,
     }));
 
     const { error: itemsError } = await supabase
@@ -156,38 +141,20 @@ export async function createOrder(input: CreateOrderInput) {
   }
 }
 
-export interface UpdateOrderInput {
-  jenis_order: "Jahit Baru" | "Permak";
-  tanggal_deadline: string;
-  total_harga: number;
-  catatan_model?: string | null;
-  items?: CreateOrderItemInput[];
-}
-
-export async function updateOrder(orderId: string, input: UpdateOrderInput) {
+export async function updateOrder(orderId: string, rawInput: unknown) {
   try {
-    const supabase = await createClient();
-
-    if (!input.tanggal_deadline) {
-      return { success: false, error: "Tanggal deadline harus diisi" };
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
+      return { success: false, error: auth.error };
     }
+    const supabase = auth.supabase;
 
-    if (input.items) {
-      if (input.items.length === 0) {
-        return { success: false, error: "Minimal 1 barang harus dimasukkan" };
-      }
-      for (const item of input.items) {
-        if (!item.nama_item?.trim()) {
-          return { success: false, error: "Nama semua barang harus diisi" };
-        }
-        if (item.ukuran_sumber === "lain" && !item.ukuran_untuk?.trim()) {
-          return {
-            success: false,
-            error: `Nama orang untuk ukuran pada barang "${item.nama_item}" wajib diisi`,
-          };
-        }
-      }
+    const parsed = updateOrderSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0];
+      return { success: false, error: firstError?.message || "Data tidak valid." };
     }
+    const input = parsed.data;
 
     const { error: orderError } = await supabase
       .from("orders")
@@ -195,7 +162,7 @@ export async function updateOrder(orderId: string, input: UpdateOrderInput) {
         jenis_order: input.jenis_order,
         tanggal_deadline: input.tanggal_deadline,
         total_harga: input.total_harga,
-        catatan_model: input.catatan_model?.trim() || null,
+        catatan_model: input.catatan_model ? sanitizeText(input.catatan_model) : null,
       })
       .eq("id", orderId);
 
@@ -218,9 +185,9 @@ export async function updateOrder(orderId: string, input: UpdateOrderInput) {
       const itemsToInsert = input.items.map((item) => ({
         order_id: orderId,
         layanan_id: item.layanan_id || null,
-        nama_item: item.nama_item.trim(),
-        jumlah: Math.max(1, item.jumlah),
-        harga_item: Math.max(0, item.harga_item),
+        nama_item: sanitizeText(item.nama_item),
+        jumlah: item.jumlah,
+        harga_item: item.harga_item,
         ukuran_sumber: item.ukuran_sumber,
         ukuran_untuk:
           item.ukuran_sumber === "lain" ? item.ukuran_untuk?.trim() || null : null,
@@ -239,7 +206,11 @@ export async function updateOrder(orderId: string, input: UpdateOrderInput) {
         panjang_celana:
           item.ukuran_sumber === "lain" ? item.panjang_celana || null : null,
         catatan_ukuran:
-          item.ukuran_sumber === "lain" ? item.catatan_ukuran?.trim() || null : null,
+          item.ukuran_sumber === "lain"
+            ? item.catatan_ukuran
+              ? sanitizeText(item.catatan_ukuran)
+              : null
+            : null,
       }));
 
       const { error: insertError } = await supabase
