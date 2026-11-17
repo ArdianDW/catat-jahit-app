@@ -18,6 +18,7 @@ import {
   updatePelanggan,
   type CreatePelangganInput,
 } from "@/lib/actions/pelanggan";
+import { filterTextInput } from "@/lib/utils/sanitize";
 import type { PelangganItem } from "@/lib/data";
 
 const AVATAR_PALETTES = [
@@ -78,9 +79,12 @@ export default function FormPelangganClient({
     "Ringkasan & Catatan",
   ];
 
+  const PHONE_REGEX = /^(\+62|62|08)[0-9]{8,13}$/;
+
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Form State
   const [nama, setNama] = useState(pelanggan?.nama_pelanggan ?? "");
@@ -99,12 +103,6 @@ export default function FormPelangganClient({
 
   const [catatan, setCatatan] = useState(pelanggan?.catatan_ukuran ?? "");
 
-  const canNext: Record<number, boolean> = {
-    1: nama.trim().length > 0 && noHp.trim().length > 0,
-    2: true,
-    3: true,
-  };
-
   const filledMeasurements = measureFields
     .map(({ key, label }) => ({
       label,
@@ -117,11 +115,46 @@ export default function FormPelangganClient({
 
   const handleNext = () => {
     setError(null);
+    const errs: Record<string, string> = {};
+
+    if (step === 1) {
+      if (!nama.trim()) {
+        errs.nama = "Nama pelanggan wajib diisi";
+      } else if (nama.trim().length < 2) {
+        errs.nama = "Nama minimal 2 karakter";
+      }
+      if (!noHp.trim()) {
+        errs.noHp = "Nomor HP wajib diisi";
+      } else if (!PHONE_REGEX.test(noHp.trim())) {
+        errs.noHp = "Format nomor tidak valid (cth: 0812xxxxxxxx)";
+      }
+    }
+
+    if (step === 2) {
+      measureFields.forEach(({ key }) => {
+        const raw = measurements[key]?.trim();
+        if (raw) {
+          const n = parseFloat(raw.replace(",", "."));
+          if (!isNaN(n)) {
+            if (n < 1) errs[key] = "Ukuran minimal 1 cm";
+            else if (n > 300) errs[key] = "Ukuran maksimal 300 cm";
+          }
+        }
+      });
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      return;
+    }
+
+    setFieldErrors({});
     setStep((s) => s + 1);
   };
 
   const handleBack = () => {
     setError(null);
+    setFieldErrors({});
     setStep((s) => s - 1);
   };
 
@@ -285,10 +318,12 @@ export default function FormPelangganClient({
             <input
               type="text"
               value={nama}
-              onChange={(e) => setNama(e.target.value)}
+              onChange={(e) => { setNama(filterTextInput(e.target.value)); setFieldErrors((p) => ({ ...p, nama: "" })); }}
+              maxLength={100}
               placeholder="cth: Siti Aminah"
-              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${fieldErrors.nama ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
             />
+            {fieldErrors.nama && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.nama}</p>}
           </div>
 
           {/* Input 2: Nomor WhatsApp / HP */}
@@ -303,10 +338,12 @@ export default function FormPelangganClient({
               type="tel"
               inputMode="tel"
               value={noHp}
-              onChange={(e) => setNoHp(e.target.value)}
+              onChange={(e) => { setNoHp(e.target.value); setFieldErrors((p) => ({ ...p, noHp: "" })); }}
+              maxLength={20}
               placeholder="cth: 081234567890"
-              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${fieldErrors.noHp ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
             />
+            {fieldErrors.noHp && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.noHp}</p>}
           </div>
 
           {/* Input 3: Alamat Singkat */}
@@ -320,7 +357,8 @@ export default function FormPelangganClient({
             <textarea
               rows={2}
               value={alamat}
-              onChange={(e) => setAlamat(e.target.value)}
+              onChange={(e) => setAlamat(filterTextInput(e.target.value))}
+              maxLength={255}
               placeholder="cth: Jl. Melati No. 12, RT 02/RW 03"
               className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none"
             />
@@ -361,20 +399,29 @@ export default function FormPelangganClient({
                   <input
                     type="number"
                     inputMode="decimal"
+                    min={1}
+                    max={300}
+                    step="0.5"
                     value={measurements[key] || ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const n = parseFloat(v);
+                      const clamped = !isNaN(n) ? Math.min(300, Math.max(1, n)) : v;
                       setMeasurements((prev) => ({
                         ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
+                        [key]: String(clamped),
+                      }));
+                      setFieldErrors((p) => ({ ...p, [key]: "" }));
+                    }}
+                    onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                     placeholder="–"
-                    className="w-full min-h-[42px] pl-3 pr-8 py-2 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+                    className={`w-full min-h-[42px] pl-3 pr-8 py-2 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-1 transition-colors ${fieldErrors[key] ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
                   />
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-medium pointer-events-none">
                     cm
                   </span>
                 </div>
+                {fieldErrors[key] && <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1"><AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors[key]}</p>}
               </div>
             ))}
           </div>
@@ -458,7 +505,8 @@ export default function FormPelangganClient({
             <textarea
               rows={3}
               value={catatan}
-              onChange={(e) => setCatatan(e.target.value)}
+              onChange={(e) => setCatatan(filterTextInput(e.target.value))}
+              maxLength={500}
               placeholder="cth: Preferensi jahitan longgar, model lengan tertentu, atau catatan penting lainnya..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none"
             />
@@ -482,9 +530,8 @@ export default function FormPelangganClient({
         {step < TOTAL_STEPS ? (
           <button
             type="button"
-            disabled={!canNext[step]}
             onClick={handleNext}
-            className="flex-1 min-h-[48px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-semibold text-sm shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 min-h-[48px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-semibold text-sm shadow-sm active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Lanjut</span>
             <ChevronRight className="w-4 h-4 shrink-0" />
@@ -513,11 +560,6 @@ export default function FormPelangganClient({
         )}
       </div>
 
-      {step === 1 && !canNext[1] && (
-        <p className="text-xs text-center text-gray-400">
-          Isi nama lengkap dan nomor WhatsApp/HP untuk melanjutkan
-        </p>
-      )}
     </div>
   );
 }

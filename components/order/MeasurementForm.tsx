@@ -1,6 +1,7 @@
 "use client";
 
 import { Ruler } from "lucide-react";
+import { filterTextInput } from "@/lib/utils/sanitize";
 
 export interface MeasurementValues {
   lingkar_dada: string;
@@ -74,11 +75,12 @@ export default function MeasurementForm({
                 id={`${idPrefix}-${key}`}
                 type="number"
                 inputMode="decimal"
-                min={0}
+                min={1}
                 max={300}
                 step="0.5"
                 value={values[key]}
                 onChange={(e) => onChange({ [key]: e.target.value })}
+                onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                 placeholder="–"
                 className="w-full min-h-[40px] pl-3 pr-8 py-2 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
               />
@@ -102,7 +104,8 @@ export default function MeasurementForm({
             id={`${idPrefix}-catatan`}
             rows={2}
             value={values.catatan_ukuran}
-            onChange={(e) => onChange({ catatan_ukuran: e.target.value })}
+            onChange={(e) => onChange({ catatan_ukuran: filterTextInput(e.target.value) })}
+            maxLength={500}
             placeholder="cth: Lengan agak panjang, pinggang longgar sedikit"
             className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none"
           />

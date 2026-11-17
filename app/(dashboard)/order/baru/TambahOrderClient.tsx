@@ -24,6 +24,7 @@ import {
 import type { PelangganOption, LayananOption } from "@/lib/data";
 import { createOrder, type CreateOrderItemInput } from "@/lib/actions/order";
 import { formatRupiah, formatDateIndo, getSisaHari, parseMeasurement } from "@/lib/utils/format";
+import { filterTextInput, blockNonInteger } from "@/lib/utils/sanitize";
 import { getAvatarColors, getInitials } from "@/lib/utils/avatar";
 import Avatar from "@/components/ui/Avatar";
 import ItemOrderCard, { type ItemForm, createNewItem } from "@/components/order/ItemOrderCard";
@@ -75,6 +76,10 @@ export default function TambahOrderClient({
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  /** Errors per item ID: { [itemId]: { nama_item?: string, harga_item?: string } } */
+  const [itemErrors, setItemErrors] = useState<Record<string, Record<string, string>>>({});
+  /** Errors untuk Step 4 (deadline, total_harga) */
+  const [step4Errors, setStep4Errors] = useState<Record<string, string>>({});
 
   const calcTotal = form.items.reduce((sum, i) => sum + i.harga_item * i.jumlah, 0);
   const sisaHari = getSisaHari(form.tanggal_deadline);
@@ -99,20 +104,53 @@ export default function TambahOrderClient({
   const canNext: Record<number, boolean> = {
     1: !!form.pelanggan,
     2: true,
-    3:
-      form.items.length > 0 &&
-      form.items.every((i) => i.nama_item.trim() && i.harga_item > 0),
-    4: !!form.tanggal_deadline && form.tanggal_deadline >= getTodayStr(),
+    3: true,
+    4: true,
     5: true,
+  };
+
+  const validateStep3 = (): boolean => {
+    const errs: Record<string, Record<string, string>> = {};
+    for (const item of form.items) {
+      const itemErr: Record<string, string> = {};
+      if (!item.nama_item.trim()) itemErr.nama_item = "Nama barang wajib diisi";
+      if (item.harga_item <= 0) itemErr.harga_item = "Harga satuan harus lebih dari 0";
+      if (item.jumlah < 1) itemErr.jumlah = "Jumlah minimal 1";
+      if (item.ukuran_sumber === "lain" && !item.ukuran_untuk.trim()) {
+        itemErr.ukuran_untuk = "Nama orang untuk ukuran wajib diisi";
+      }
+      if (Object.keys(itemErr).length > 0) errs[item.id] = itemErr;
+    }
+    setItemErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const validateStep4 = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.tanggal_deadline) {
+      errs.deadline = "Tanggal target selesai wajib diisi";
+    } else if (form.tanggal_deadline < getTodayStr()) {
+      errs.deadline = "Target selesai tidak boleh sebelum hari ini";
+    }
+    const parsed = parseInt(form.total_harga_str);
+    if (!isNaN(parsed) && parsed < 0) {
+      errs.total_harga = "Total biaya tidak boleh negatif";
+    }
+    setStep4Errors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleNext = () => {
     setError(null);
     if (step === 3) {
+      if (!validateStep3()) return;
       setForm((f) => ({
         ...f,
         total_harga_str: f.total_harga_str || String(calcTotal),
       }));
+    }
+    if (step === 4) {
+      if (!validateStep4()) return;
     }
     setStep((s) => s + 1);
   };
@@ -409,12 +447,21 @@ export default function TambahOrderClient({
               layananList={relevantLayanan}
               pelangganHasUkuran={form.pelanggan?.has_ukuran ?? false}
               showRemove={form.items.length > 1}
-              onChange={(updated) =>
+              errors={itemErrors[item.id]}
+              onChange={(updated) => {
                 setForm((f) => ({
                   ...f,
                   items: f.items.map((i) => (i.id === updated.id ? updated : i)),
-                }))
-              }
+                }));
+                // Hapus error item saat user mulai mengedit
+                if (itemErrors[updated.id]) {
+                  setItemErrors((prev) => {
+                    const next = { ...prev };
+                    delete next[updated.id];
+                    return next;
+                  });
+                }
+              }}
               onRemove={() =>
                 setForm((f) => ({
                   ...f,
@@ -479,8 +526,14 @@ export default function TambahOrderClient({
               min={getTodayStr()}
               value={form.tanggal_deadline}
               onChange={(e) => setForm((f) => ({ ...f, tanggal_deadline: e.target.value }))}
-              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors cursor-pointer"
+              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:ring-1 transition-colors cursor-pointer ${step4Errors.deadline ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
             />
+            {step4Errors.deadline && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {step4Errors.deadline}
+              </p>
+            )}
 
             {form.tanggal_deadline && (
               <div className="pt-2.5 border-t border-gray-100 flex flex-col gap-2">
@@ -524,8 +577,13 @@ export default function TambahOrderClient({
                 type="number"
                 inputMode="numeric"
                 min={0}
+                max={100000000}
                 value={form.total_harga_str}
-                onChange={(e) => setForm((f) => ({ ...f, total_harga_str: e.target.value }))}
+                onChange={(e) => {
+                  const val = Math.min(100_000_000, Math.max(0, parseInt(e.target.value) || 0));
+                  setForm((f) => ({ ...f, total_harga_str: String(val) }));
+                }}
+                onKeyDown={blockNonInteger}
                 placeholder={String(calcTotal)}
                 className="w-full min-h-[52px] pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-[#EDF4FF] text-lg font-bold text-gray-800 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
               />
@@ -533,6 +591,12 @@ export default function TambahOrderClient({
             <p className="text-[11px] text-gray-400">
               Dihitung dari total barang ({formatRupiah(calcTotal)}). Dapat diedit bila ada biaya tambahan atau diskon.
             </p>
+            {step4Errors.total_harga && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {step4Errors.total_harga}
+              </p>
+            )}
             {form.total_harga_str && parseInt(form.total_harga_str) !== calcTotal && (
               <button
                 type="button"
@@ -633,7 +697,8 @@ export default function TambahOrderClient({
               id="catatan-model"
               rows={4}
               value={form.catatan_model}
-              onChange={(e) => setForm((f) => ({ ...f, catatan_model: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, catatan_model: filterTextInput(e.target.value) }))}
+              maxLength={1000}
               placeholder="cth: Model A-line, kerah V, ada kantong samping, warna biru dongker"
               className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none"
             />
@@ -657,7 +722,7 @@ export default function TambahOrderClient({
         {step < TOTAL_STEPS ? (
           <button
             type="button"
-            disabled={!canNext[step]}
+            disabled={step === 1 ? !canNext[1] : false}
             onClick={handleNext}
             className="flex-1 min-h-[48px] rounded-xl bg-[#6B8F71] hover:bg-[#5a7b5f] text-white font-semibold text-sm shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
@@ -682,15 +747,6 @@ export default function TambahOrderClient({
 
       {step === 1 && !canNext[1] && (
         <p className="text-xs text-center text-gray-400">Pilih pelanggan untuk melanjutkan</p>
-      )}
-      {step === 3 && !canNext[3] && (
-        <p className="text-xs text-center text-gray-400">Isi nama dan harga semua barang untuk melanjutkan</p>
-      )}
-      {step === 4 && !form.tanggal_deadline && (
-        <p className="text-xs text-center text-gray-400">Pilih tanggal target selesai untuk melanjutkan</p>
-      )}
-      {step === 4 && form.tanggal_deadline && form.tanggal_deadline < getTodayStr() && (
-        <p className="text-xs text-center text-amber-500">Target selesai tidak boleh sebelum hari ini</p>
       )}
     </div>
   );

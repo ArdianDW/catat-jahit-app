@@ -19,6 +19,7 @@ import {
 import type { OrderDetail, LayananOption } from "@/lib/data";
 import { updateOrder, type CreateOrderItemInput } from "@/lib/actions/order";
 import { formatRupiah, formatDateIndo, getSisaHari, parseMeasurement } from "@/lib/utils/format";
+import { filterTextInput, blockNonInteger } from "@/lib/utils/sanitize";
 import Avatar from "@/components/ui/Avatar";
 import ItemOrderCard, { type ItemForm, createNewItem } from "@/components/order/ItemOrderCard";
 
@@ -35,6 +36,8 @@ export default function EditOrderClient({ order, layananList }: EditOrderClientP
   const [deadline, setDeadline] = useState(order.tanggal_deadline.slice(0, 10));
   const [catatan, setCatatan] = useState(order.catatan_model ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [itemErrors, setItemErrors] = useState<Record<string, Record<string, string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [items, setItems] = useState<ItemForm[]>(() => {
     if (!order.item_order || order.item_order.length === 0) {
@@ -87,29 +90,46 @@ export default function EditOrderClient({ order, layananList }: EditOrderClientP
     if (e) e.preventDefault();
     setError(null);
 
+    const fErrs: Record<string, string> = {};
     if (!deadline) {
-      setError("Target selesai (deadline) wajib diisi");
-      return;
+      fErrs.deadline = "Target selesai (deadline) wajib diisi";
+    }
+    if (isNaN(parsedTotal) || parsedTotal < 0) {
+      fErrs.total_harga = "Total biaya jahit tidak valid";
     }
     if (items.length === 0) {
       setError("Minimal 1 barang harus dimasukkan");
       return;
     }
-    for (let idx = 0; idx < items.length; idx++) {
-      const it = items[idx];
+
+    const iErrs: Record<string, Record<string, string>> = {};
+    for (const it of items) {
+      const errs: Record<string, string> = {};
       if (!it.nama_item.trim()) {
-        setError(`Nama barang #${idx + 1} wajib diisi`);
-        return;
+        errs.nama_item = "Nama barang wajib diisi";
+      }
+      if (it.harga_item <= 0) {
+        errs.harga_item = "Harga satuan harus lebih dari 0";
+      }
+      if (it.jumlah < 1) {
+        errs.jumlah = "Jumlah minimal 1";
       }
       if (it.ukuran_sumber === "lain" && !it.ukuran_untuk.trim()) {
-        setError(`Nama orang untuk ukuran pada barang #${idx + 1} ("${it.nama_item}") wajib diisi`);
-        return;
+        errs.ukuran_untuk = "Nama orang untuk ukuran wajib diisi";
+      }
+      if (Object.keys(errs).length > 0) {
+        iErrs[it.id] = errs;
       }
     }
-    if (isNaN(parsedTotal) || parsedTotal < 0) {
-      setError("Total biaya jahit tidak valid");
+
+    if (Object.keys(fErrs).length > 0 || Object.keys(iErrs).length > 0) {
+      setFieldErrors(fErrs);
+      setItemErrors(iErrs);
       return;
     }
+
+    setFieldErrors({});
+    setItemErrors({});
 
     startTransition(async () => {
       const mappedItems: CreateOrderItemInput[] = items.map((i) => ({
@@ -258,7 +278,17 @@ export default function EditOrderClient({ order, layananList }: EditOrderClientP
             layananList={relevantLayanan}
             pelangganHasUkuran={pelangganHasUkuran}
             showRemove={items.length > 1}
-            onChange={(updated) => setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))}
+            errors={itemErrors[item.id]}
+            onChange={(updated) => {
+              setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+              if (itemErrors[updated.id]) {
+                setItemErrors((prev) => {
+                  const next = { ...prev };
+                  delete next[updated.id];
+                  return next;
+                });
+              }
+            }}
             onRemove={() => setItems((prev) => prev.filter((i) => i.id !== item.id))}
           />
         ))}
@@ -295,9 +325,18 @@ export default function EditOrderClient({ order, layananList }: EditOrderClientP
         <input
           type="date"
           value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors cursor-pointer"
+          onChange={(e) => {
+            setDeadline(e.target.value);
+            if (fieldErrors.deadline) setFieldErrors((p) => ({ ...p, deadline: "" }));
+          }}
+          className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:ring-1 transition-colors cursor-pointer ${fieldErrors.deadline ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
         />
+        {fieldErrors.deadline && (
+          <p className="text-xs text-red-500 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 shrink-0" />
+            {fieldErrors.deadline}
+          </p>
+        )}
 
         {deadline && (
           <div className="pt-2.5 border-t border-gray-100 flex flex-col gap-2">
@@ -343,14 +382,25 @@ export default function EditOrderClient({ order, layananList }: EditOrderClientP
             type="number"
             inputMode="numeric"
             min={0}
+            max={100000000}
             value={totalHargaStr}
-            onChange={(e) => setTotalHargaStr(e.target.value)}
+            onChange={(e) => {
+              const val = Math.min(100_000_000, Math.max(0, parseInt(e.target.value) || 0));
+              setTotalHargaStr(String(val));
+            }}
+            onKeyDown={blockNonInteger}
             className="w-full min-h-[52px] pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-[#EDF4FF] text-lg font-bold text-gray-800 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
           />
         </div>
         <p className="text-[11px] text-gray-400">
           Dihitung dari total harga barang ({formatRupiah(calcTotal)}). Dapat disesuaikan bila ada diskon atau biaya tambahan.
         </p>
+        {fieldErrors.total_harga && (
+          <p className="text-xs text-red-500 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 shrink-0" />
+            {fieldErrors.total_harga}
+          </p>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-xs flex flex-col gap-2.5">
@@ -361,7 +411,8 @@ export default function EditOrderClient({ order, layananList }: EditOrderClientP
         <textarea
           rows={3}
           value={catatan}
-          onChange={(e) => setCatatan(e.target.value)}
+          onChange={(e) => setCatatan(filterTextInput(e.target.value))}
+          maxLength={1000}
           placeholder="cth: Model A-line, kerah V, ada kantong samping, warna biru dongker"
           className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none"
         />

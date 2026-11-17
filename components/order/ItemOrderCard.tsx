@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, ShoppingBag, Trash2 } from "lucide-react";
+import { filterTextInput, blockNonInteger } from "@/lib/utils/sanitize";
 import LayananDropdown from "./LayananDropdown";
 import MeasurementForm, { type MeasurementValues } from "./MeasurementForm";
 import type { LayananOption } from "@/lib/data";
@@ -56,6 +57,8 @@ interface ItemOrderCardProps {
   showRemove: boolean;
   onChange: (updated: ItemForm) => void;
   onRemove: () => void;
+  /** Inline field errors, keyed by `${idPrefix}-nama` and `${idPrefix}-harga` */
+  errors?: Record<string, string>;
 }
 
 const UKURAN_SUMBER_OPTIONS: { value: TUkuranSumber; label: string }[] = [
@@ -72,6 +75,7 @@ export default function ItemOrderCard({
   showRemove,
   onChange,
   onRemove,
+  errors = {},
 }: ItemOrderCardProps) {
   const upd = (patch: Partial<ItemForm>) => onChange({ ...item, ...patch });
 
@@ -90,7 +94,7 @@ export default function ItemOrderCard({
   const idPrefix = `item-${item.id}`;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col gap-3.5 shadow-2xs">
+    <div className={`bg-white rounded-2xl border p-4 flex flex-col gap-3.5 shadow-2xs ${Object.keys(errors).length > 0 ? "border-red-300" : "border-gray-200"}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#EFF3EE] flex items-center justify-center shrink-0">
@@ -118,10 +122,17 @@ export default function ItemOrderCard({
           id={`${idPrefix}-nama`}
           type="text"
           value={item.nama_item}
-          onChange={(e) => upd({ nama_item: e.target.value })}
+          onChange={(e) => upd({ nama_item: filterTextInput(e.target.value) })}
+          maxLength={100}
           placeholder="cth: Baju Kebaya, Celana Panjang"
-          className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+          className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.nama_item ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
         />
+        {errors.nama_item && (
+          <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 shrink-0" />
+            {errors.nama_item}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -152,10 +163,18 @@ export default function ItemOrderCard({
             type="number"
             inputMode="numeric"
             min={1}
+            max={99}
             value={item.jumlah}
-            onChange={(e) => upd({ jumlah: Math.max(1, parseInt(e.target.value) || 1) })}
-            className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+            onChange={(e) => upd({ jumlah: Math.min(99, Math.max(1, parseInt(e.target.value) || 1)) })}
+            onKeyDown={blockNonInteger}
+            className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 focus:outline-none focus:ring-1 transition-colors ${errors.jumlah ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
           />
+          {errors.jumlah && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              {errors.jumlah}
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${idPrefix}-harga`} className="text-xs font-semibold text-gray-500">
@@ -166,11 +185,19 @@ export default function ItemOrderCard({
             type="number"
             inputMode="numeric"
             min={0}
+            max={50000000}
             value={item.harga_item || ""}
-            onChange={(e) => upd({ harga_item: Math.max(0, parseInt(e.target.value) || 0) })}
+            onChange={(e) => upd({ harga_item: Math.min(50000000, Math.max(0, parseInt(e.target.value) || 0)) })}
+            onKeyDown={blockNonInteger}
             placeholder="0"
-            className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+            className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.harga_item ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
           />
+          {errors.harga_item && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              {errors.harga_item}
+            </p>
+          )}
         </div>
       </div>
 
@@ -226,10 +253,17 @@ export default function ItemOrderCard({
               id={`${idPrefix}-ukuran-untuk`}
               type="text"
               value={item.ukuran_untuk}
-              onChange={(e) => upd({ ukuran_untuk: e.target.value })}
+              onChange={(e) => upd({ ukuran_untuk: filterTextInput(e.target.value) })}
+              maxLength={100}
               placeholder="cth: Ibu, Anak Sulung, Kakak"
-              className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+              className={`w-full min-h-[40px] px-3 py-2 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${errors.ukuran_untuk ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
             />
+            {errors.ukuran_untuk && (
+              <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {errors.ukuran_untuk}
+              </p>
+            )}
           </div>
 
           {/* 7 field ukuran + catatan */}

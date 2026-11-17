@@ -93,6 +93,6 @@ export function parseMeasurement(val: string): number | null {
   if (!val || val.trim() === "") return null;
   const normalized = val.replace(",", ".");
   const parsed = parseFloat(normalized);
-  if (isNaN(parsed) || parsed < 0 || parsed > 300) return null;
+  if (isNaN(parsed) || parsed <= 0 || parsed > 300) return null;
   return parsed;
 }

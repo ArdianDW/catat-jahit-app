@@ -2,7 +2,12 @@ import { z } from "zod";
 
 const PHONE_REGEX = /^(\+62|62|08)[0-9]{8,13}$/;
 
-const ukuranCm = z.number().min(0).max(300).nullable().optional();
+const ukuranCm = z
+  .number()
+  .min(1, "Ukuran minimal 1 cm")
+  .max(300, "Ukuran maksimal 300 cm")
+  .nullable()
+  .optional();
 
 export const pelangganSchema = z.object({
   nama_pelanggan: z

@@ -19,6 +19,7 @@ import {
   updateLayanan,
   type CreateLayananInput,
 } from "@/lib/actions/layanan";
+import { filterTextInput } from "@/lib/utils/sanitize";
 import type { LayananItem } from "@/lib/data";
 
 interface FormLayananClientProps {
@@ -54,12 +55,14 @@ export default function FormLayananClient({
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const numericHarga = parseInt(hargaRaw.replace(/\D/g, ""), 10) || 0;
 
   const handleHargaChange = (val: string) => {
     const cleaned = val.replace(/\D/g, "");
-    setHargaRaw(cleaned);
+    const clamped = cleaned ? Math.min(parseInt(cleaned), 10_000_000) : 0;
+    setHargaRaw(clamped ? String(clamped) : cleaned);
   };
 
   const applyPresetPrice = (amount: number) => {
@@ -74,15 +77,14 @@ export default function FormLayananClient({
     if (e) e.preventDefault();
     setError(null);
 
-    if (!namaLayanan.trim()) {
-      setError("Nama layanan tidak boleh kosong");
+    const errs: Record<string, string> = {};
+    if (!namaLayanan.trim()) errs.namaLayanan = "Nama layanan tidak boleh kosong";
+    if (isNaN(numericHarga) || numericHarga < 0) errs.harga = "Harga dasar harus berupa angka minimal 0";
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
-
-    if (isNaN(numericHarga) || numericHarga < 0) {
-      setError("Harga dasar harus berupa angka minimal 0");
-      return;
-    }
+    setFieldErrors({});
 
     startTransition(async () => {
       const input: CreateLayananInput = {
@@ -117,6 +119,7 @@ export default function FormLayananClient({
     setHargaRaw("");
     setDeskripsi("");
     setError(null);
+    setFieldErrors({});
   };
 
   return (
@@ -260,14 +263,21 @@ export default function FormLayananClient({
             <input
               type="text"
               value={namaLayanan}
-              onChange={(e) => setNamaLayanan(e.target.value)}
+              onChange={(e) => { setNamaLayanan(filterTextInput(e.target.value)); setFieldErrors((p) => ({ ...p, namaLayanan: "" })); }}
+              maxLength={100}
               placeholder={
                 jenis === "Jahit"
                   ? "cth: Jahit Seragam SD, Jahit Gamis Dewasa"
                   : "cth: Permak Celana Levis, Ganti Resleting"
               }
-              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-colors ${fieldErrors.namaLayanan ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
             />
+            {fieldErrors.namaLayanan && (
+              <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {fieldErrors.namaLayanan}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -286,11 +296,17 @@ export default function FormLayananClient({
                 type="text"
                 inputMode="numeric"
                 value={numericHarga ? numericHarga.toLocaleString("id-ID") : ""}
-                onChange={(e) => handleHargaChange(e.target.value)}
+                onChange={(e) => { handleHargaChange(e.target.value); setFieldErrors((p) => ({ ...p, harga: "" })); }}
                 placeholder="0"
-                className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm font-bold text-gray-800 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors"
+                className={`w-full min-h-[44px] pl-10 pr-3.5 py-2.5 rounded-xl border bg-[#EDF4FF] text-sm font-bold text-gray-800 focus:outline-none focus:ring-1 transition-colors ${fieldErrors.harga ? "border-red-400 focus:border-red-400 focus:ring-red-200" : "border-gray-200 focus:border-[#6B8F71] focus:ring-[#6B8F71]/20"}`}
               />
             </div>
+            {fieldErrors.harga && (
+              <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {fieldErrors.harga}
+              </p>
+            )}
 
             <div className="flex flex-wrap gap-1.5 pt-0.5">
               {PRESET_PRICES[jenis].map((price) => (
@@ -325,7 +341,8 @@ export default function FormLayananClient({
             <textarea
               rows={3}
               value={deskripsi}
-              onChange={(e) => setDeskripsi(e.target.value)}
+              onChange={(e) => setDeskripsi(filterTextInput(e.target.value))}
+              maxLength={500}
               placeholder="cth: Termasuk obras dan kancing standar, kain dari pelanggan"
               className="w-full p-3.5 rounded-xl border border-gray-200 bg-[#EDF4FF] text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71]/20 transition-colors resize-none leading-relaxed"
             />
